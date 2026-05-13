@@ -1,0 +1,10 @@
+from fastapi import APIRouter
+from app.api import login, blood_tests, recipes, meal_plans, glucose, exercise
+
+router = APIRouter(prefix="/api")
+router.include_router(login.router, prefix="/auth", tags=["Auth"])
+router.include_router(blood_tests.router, prefix="/blood-tests", tags=["Blood Tests"])
+router.include_router(recipes.router, prefix="/recipes", tags=["Recipes"])
+router.include_router(meal_plans.router, prefix="/meal-plans", tags=["Meal Plans"])
+router.include_router(glucose.router, prefix="/glucose", tags=["Glucose"])
+router.include_router(exercise.router, prefix="/exercise", tags=["Exercise"])
