@@ -11,3 +11,6 @@ dist/
 .DS_Store
 *.log
 start_backend.sh
+uploads/
+uploads/
+backend/uploads/
