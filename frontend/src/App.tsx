@@ -1,3 +1,4 @@
+import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuth } from './hooks/useAuth'
@@ -6,6 +7,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import BloodTestsIndex from './pages/BloodTests/Index'
 import BloodTestsUpload from './pages/BloodTests/Upload'
+import BloodTestDetail from './pages/BloodTests/Detail'
 import BloodTestsTrends from './pages/BloodTests/Trends'
 import Recipes from './pages/Meals/Recipes'
 import MealPlan from './pages/Meals/MealPlan'
@@ -35,6 +37,7 @@ function App() {
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/blood-tests" element={<ProtectedRoute><BloodTestsIndex /></ProtectedRoute>} />
           <Route path="/blood-tests/upload" element={<ProtectedRoute><BloodTestsUpload /></ProtectedRoute>} />
+          <Route path="/blood-tests/:id" element={<ProtectedRoute><BloodTestDetail /></ProtectedRoute>} />
           <Route path="/blood-tests/trends" element={<ProtectedRoute><BloodTestsTrends /></ProtectedRoute>} />
           <Route path="/meals/recipes" element={<ProtectedRoute><Recipes /></ProtectedRoute>} />
           <Route path="/meals/plans" element={<ProtectedRoute><MealPlan /></ProtectedRoute>} />

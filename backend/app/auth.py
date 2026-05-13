@@ -2,26 +2,33 @@ from datetime import datetime, timedelta, timezone
 import hmac
 import hashlib
 import secrets
+import os
 
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from app.database import get_db, User
+from app.database import get_db
+from app.models import User
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 480000)
+    return f"{salt}:{key.hex()}"
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        salt, hash_value = hashed.split(":")
+        key = hashlib.pbkdf2_hmac('sha256', plain.encode(), salt.encode(), 480000)
+        return hmac.compare_digest(key.hex(), hash_value)
+    except ValueError:
+        return False
 
 
 def create_token(user_id: int) -> str:
