@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useBloodTests } from '../../hooks/useBloodTests'
 
 export default function BloodTestsIndex() {
-  const { tests, isLoading } = useBloodTests()
+  const { tests, isLoading, deleteMutation } = useBloodTests()
 
   return (
     <div className="space-y-6">
@@ -56,7 +56,7 @@ export default function BloodTestsIndex() {
                   </td>
                   <td className="px-6 py-4 text-sm text-right">
                     <Link to={`/blood-tests/${test.id}`} className="text-primary-600 hover:underline mr-3">Detail</Link>
-                    <Link to="/blood-tests/trends" className="text-[var(--text-muted)] hover:text-gray-700">Trends</Link>
+                    <button onClick={() => { if (confirm('Delete this test and all its markers?')) deleteMutation.mutate(test.id) }} className="text-red-500 hover:text-red-700">Delete</button>
                   </td>
                 </tr>
               ))}

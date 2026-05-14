@@ -1,11 +1,14 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import api from '../../lib/api'
+import { useBloodTests } from '../../hooks/useBloodTests'
 import type { BloodTest } from '../../types'
 
 export default function BloodTestDetail() {
   const { id } = useParams()
   const testId = Number(id)
+  const navigate = useNavigate()
+  const { deleteMutation } = useBloodTests()
 
   const { data: test, isLoading } = useQuery<BloodTest>({
     queryKey: ['blood-test', testId],
@@ -15,14 +18,26 @@ export default function BloodTestDetail() {
     },
   })
 
+  const handleDelete = () => {
+    if (!confirm('Delete this blood test and all its markers?')) return
+    deleteMutation.mutate(testId, {
+      onSettled: () => navigate('/blood-tests'),
+    })
+  }
+
   if (isLoading) return <p className="text-[var(--text-muted)]">Loading...</p>
   if (!test) return <p className="text-[var(--text-muted)]">Test not found.</p>
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link to="/blood-tests" className="text-primary-600 hover:underline text-sm">&larr; Back</Link>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Blood Test - {new Date(test.date_tested).toLocaleDateString()}</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link to="/blood-tests" className="text-primary-600 hover:underline text-sm">&larr; Back</Link>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">Blood Test - {new Date(test.date_tested).toLocaleDateString()}</h1>
+        </div>
+        <button onClick={handleDelete} className="text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800">
+          Delete Test
+        </button>
       </div>
 
       <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6 space-y-4">
@@ -56,7 +71,7 @@ export default function BloodTestDetail() {
                 <td className="px-6 py-4 text-sm font-medium">{m.marker_name}</td>
                 <td className="px-6 py-4 text-sm">{m.value} {m.unit}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-muted)]">
-                  {m.low_ref != null || m.high_ref != null ? `${m.low_ref ?? '-' } - ${m.high_ref ?? '-'}` : '-'}
+                  {m.low_ref != null || m.high_ref != null ? `${m.low_ref ?? '-'} - ${m.high_ref ?? '-'}` : '-'}
                 </td>
                 <td className="px-6 py-4 text-sm text-center">
                   {m.is_flagged ? (
