@@ -142,4 +142,5 @@ def _extract_markers_from_response(api_response: Dict[str, Any]) -> List[Dict[st
 
 def get_supported_categories() -> List[str]:
     """Return list of known blood test categories for validation."""
-    return ["lipids", "glucose", "cbc", "liver", "kidney", "thyroid"]
+    return ["lipids", "glucose", "cbc", "liver", "kidney", "thyroid"]# UltimateHealthApp
+# UltimateHealthApp
