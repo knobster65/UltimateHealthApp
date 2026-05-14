@@ -72,8 +72,15 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
         if response.status_code != 200:
             raise Exception(f"AbacusAI API error: {response.text}")
 
-        result = response.json()
-        return _extract_markers_from_response(result)
+        raw_result = response.json()
+        # Debug logging: save raw response to file for inspection
+        try:
+            with open("/tmp/abacusai_debug_response.txt", "w") as f:
+                json.dump(raw_result, f, indent=2)
+        except Exception:
+            pass
+
+        return _extract_markers_from_response(raw_result)
 
 
 def _convert_pdf_to_images(pdf_bytes: bytes) -> List[str]:
