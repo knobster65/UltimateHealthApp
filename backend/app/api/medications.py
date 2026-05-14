@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -73,7 +73,7 @@ def delete_medication(med_id: int, db: Session = Depends(get_db), _user: User = 
 
 
 @router.get("/check-interactions")
-def check_interactions(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+async def check_interactions(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
     """Use AI to analyze medications against recent blood test results and flag potential interactions."""
     from app.models import BloodTest, BloodMarker
 
@@ -87,7 +87,7 @@ def check_interactions(db: Session = Depends(get_db), _user: User = Depends(get_
         return {"interactions": []}
 
     # Get recent blood test markers (last 6 months)
-    six_months_ago = date.today().replace(month=date.today().month - 6 if date.today().month > 6 else date.today().month + 6, year=date.today().year - 1 if date.today().month <= 6 else date.today().year)
+    six_months_ago = (datetime.today() - timedelta(days=180)).date()
     recent_tests = db.query(BloodTest).filter(
         BloodTest.date_tested >= six_months_ago
     ).order_by(BloodTest.date_tested.desc()).all()
@@ -130,12 +130,9 @@ Focus on known pharmacological effects like:
     ]
 
     try:
-        # Import here to avoid circular import issues
-        import asyncio
-        raw_text = asyncio.run(call_ai_api(messages))
-
         import json
         import re
+        raw_text = await call_ai_api(messages)
         try:
             interactions = json.loads(raw_text)
         except json.JSONDecodeError:
