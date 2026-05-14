@@ -2,6 +2,8 @@
 
 import httpx
 import base64
+import json
+import logging
 from typing import List, Dict, Any, Optional
 from app.config import settings
 
@@ -92,14 +94,31 @@ def _convert_pdf_to_images(pdf_bytes: bytes) -> List[str]:
 
 def _extract_markers_from_response(api_response: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Parse the AbacusAI response into marker objects."""
-    import json
+    import re
 
     try:
         content = api_response["choices"][0]["message"]["content"]
+    except (KeyError, IndexError):
+        logging.error(f"AbacusAI raw response structure: {api_response}")
+        raise Exception("Invalid response structure from AbacusAI API")
+
+    if not content or not isinstance(content, str):
+        raise Exception("Empty or invalid response content from AbacusAI")
+
+    try:
         markers = json.loads(content)
         return [m for m in markers if isinstance(m, dict)]
-    except (KeyError, IndexError, json.JSONDecodeError):
-        raise Exception("Failed to parse AbacusAI response")
+    except json.JSONDecodeError:
+        # Try to find JSON-like structure in the response
+        match = re.search(r'\[\s*{.*}\s*\]', content, re.DOTALL)
+        if match:
+            try:
+                result = json.loads(match.group(0))
+                return [m for m in result if isinstance(m, dict)]
+            except json.JSONDecodeError:
+                pass
+
+        raise Exception(f"Could not parse response as JSON. Model returned: {content[:200]}...")
 
 
 def get_supported_categories() -> List[str]:
