@@ -15,7 +15,7 @@ const markerCategories = [
 
 export default function BloodTestsUpload() {
   const navigate = useNavigate()
-  const { createMutation, uploadPdfMutation } = useBloodTests()
+  const { createMutation, parsePdfMutation } = useBloodTests()
   const [dateTested, setDateTested] = useState(new Date().toISOString().split('T')[0])
   const [labName, setLabName] = useState('')
   const [notes, setNotes] = useState('')
@@ -41,6 +41,33 @@ export default function BloodTestsUpload() {
       setPdfPath(result.pdf_path)
     } catch (err: any) {
       setApiError(err?.response?.data?.detail || 'PDF upload failed')
+    } finally {
+      setUploadingPdf(false)
+    }
+  }
+
+  const handleParsePdf = async () => {
+    if (!pdfFile) return
+    setUploadingPdf(true)
+    setApiError('')
+    try {
+      const result = await parsePdfMutation.mutateAsync(pdfFile)
+      // Populate markers from AI parsing
+      if (result.markers && result.markers.length > 0) {
+        setMarkers(result.markers.map(m => ({
+          category: m.category || 'other',
+          marker_name: m.marker_name || '',
+          value: m.value || 0,
+          unit: m.unit || '',
+          low_ref: m.low_ref,
+          high_ref: m.high_ref,
+        })))
+      } else {
+        setApiError('No markers found in PDF')
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || 'PDF parsing failed'
+      setApiError(msg)
     } finally {
       setUploadingPdf(false)
     }
@@ -88,17 +115,19 @@ export default function BloodTestsUpload() {
         {/* PDF upload */}
         <div className="border rounded-lg p-4 space-y-3">
           <label className="block text-sm font-medium text-[var(--text-secondary)]">PDF Report (optional)</label>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <input type="file" accept=".pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
               className="flex-1 text-sm" />
             {pdfFile && !pdfPath && (
-              <button type="button" onClick={handlePdfUpload} disabled={uploadingPdf}
-                className="px-3 py-2 bg-[var(--bg-hover)] text-[var(--text-secondary)] rounded-lg text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50">
-                {uploadingPdf ? 'Uploading...' : 'Upload'}
-              </button>
+              <>
+                <button type="button" onClick={handleParsePdf} disabled={uploadingPdf}
+                  className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50">
+                  {uploadingPdf ? 'Parsing...' : 'Parse with AI'}
+                </button>
+              </>
             )}
             {pdfPath && <span className="text-sm text-green-600">PDF uploaded</span>}
-            {uploadPdfMutation.error && !pdfPath && <span className="text-sm text-red-600">Upload failed, try again</span>}
+            {parsePdfMutation.error && !pdfPath && <span className="text-sm text-red-600">Parse failed, try again</span>}
           </div>
         </div>
 

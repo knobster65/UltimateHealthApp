@@ -25,7 +25,20 @@ export function useBloodTests() {
     mutationFn: async (file: File) => {
       const formData = new FormData()
       formData.append('file', file)
-      const { data } = await api.post('/blood-tests/upload-pdf', formData)
+      const { data } = await api.post('/blood-tests/upload-pdf', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    },
+  })
+
+  const parsePdfMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const { data } = await api.post('/blood-tests/parse-pdf', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
       return data
     },
   })
@@ -48,5 +61,5 @@ export function useBloodTests() {
       enabled: markerName.length > 0,
     })
 
-  return { tests, isLoading, createMutation, uploadPdfMutation, deleteMutation, trendsQuery }
+  return { tests, isLoading, createMutation, uploadPdfMutation, parsePdfMutation, deleteMutation, trendsQuery }
 }

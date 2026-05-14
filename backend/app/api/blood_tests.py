@@ -2,6 +2,8 @@ import os
 import time
 from datetime import date, datetime
 from pathlib import Path
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -12,6 +14,7 @@ from app.models import User, BloodTest, BloodMarker
 from app.auth import get_current_user
 from app.schemas import BloodTestCreate, BloodTestRead, BloodTestUpdate, MarkerRead
 from app.config import settings
+from app.services.pdf_parser import parse_pdf_with_abacusai
 
 router = APIRouter()
 
@@ -86,7 +89,7 @@ def delete_test(test_id: int, db: Session = Depends(get_db), _user: User = Depen
 
 
 @router.post("/upload-pdf")
-def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
     upload_dir = Path(settings.UPLOAD_DIR) / "blood_tests"
@@ -95,12 +98,32 @@ def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db), _use
     filename = f"{timestamp}_{file.filename}"
     filepath = upload_dir / filename
     with open(filepath, "wb") as f:
-        content = file.file.read()
+        content = await file.read()
         if len(content) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
             filepath.unlink()
             raise HTTPException(status_code=400, detail="File too large")
         f.write(content)
     return {"pdf_path": f"blood_tests/{filename}"}
+
+
+@router.post("/parse-pdf")
+async def parse_pdf(file: UploadFile = File(...), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """Upload and parse a blood test PDF using AbacusAI, returning structured marker data."""
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files allowed")
+
+    pdf_bytes = await file.read()
+    if len(pdf_bytes) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large")
+
+    try:
+        markers = await parse_pdf_with_abacusai(pdf_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"PDF parsing failed: {str(e)}")
+
+    return {"markers": markers}
 
 
 @router.get("/markers/trends")
