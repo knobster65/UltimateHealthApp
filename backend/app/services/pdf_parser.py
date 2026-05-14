@@ -56,7 +56,7 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
     payload = {
         "model": settings.ABACUSAI_MODEL,
         "messages": messages,
-        "response_format": {"type": "json_object"}
+        "temperature": 0.1
     }
 
     async with httpx.AsyncClient(timeout=120.0) as client:
