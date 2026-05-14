@@ -13,7 +13,7 @@ function getMonday(d: Date): string {
 }
 
 export default function MealPlan() {
-  const { plans, isLoading, createMutation, deleteMutation } = useMealPlans()
+  const { plans, isLoading, createMutation, deleteMutation, generateAIMealPlanMutation } = useMealPlans()
   const { recipes } = useRecipes()
   const [showForm, setShowForm] = useState(false)
   const [weekStart, setWeekStart] = useState(getMonday(new Date()))
@@ -55,11 +55,28 @@ export default function MealPlan() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-[var(--text-primary)]">Meal Plans</h1>
-        <button onClick={() => setShowForm(!showForm)}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">
-          {showForm ? 'Cancel' : '+ New Plan'}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => generateAIMealPlanMutation.mutate()}
+            disabled={generateAIMealPlanMutation.isPending}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {generateAIMealPlanMutation.isPending ? 'Generating...' : 'Generate AI Plan'}
+          </button>
+          <button onClick={() => setShowForm(!showForm)}
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">
+            {showForm ? 'Cancel' : '+ New Plan'}
+          </button>
+        </div>
       </div>
+
+      {generateAIMealPlanMutation.isSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+          <p className="text-sm text-green-700 dark:text-green-400">
+            AI meal plan generated with {generateAIMealPlanMutation.data?.recipes_created || 0} recipes! Refreshing...
+          </p>
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6 space-y-5">

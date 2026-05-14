@@ -28,6 +28,17 @@ export function useMealPlans() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meal-plans'] }),
   })
 
+  const generateAIMealPlanMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/suggestions/generate')
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meal-plans'] })
+      queryClient.invalidateQueries({ queryKey: ['recipes'] })
+    },
+  })
+
   const shoppingListQuery = (planId: number) =>
     useQuery<ShoppingListItem[]>({
       queryKey: ['shopping-list', planId],
@@ -38,5 +49,5 @@ export function useMealPlans() {
       enabled: !!planId,
     })
 
-  return { plans, isLoading, createMutation, deleteMutation, shoppingListQuery }
+  return { plans, isLoading, createMutation, deleteMutation, generateAIMealPlanMutation, shoppingListQuery }
 }

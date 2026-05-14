@@ -1,5 +1,6 @@
 from collections import defaultdict
-from app.models import BloodTest, RecipeNutrition, Recipe
+from datetime import date, datetime, timedelta
+from app.models import BloodTest, BloodMarker, RecipeNutrition, Recipe
 
 
 # Maps blood markers to dietary guidance. Each entry: (guidance_text, [(nutrient_field, weight), ...])
@@ -133,3 +134,110 @@ def analyze_and_suggest(db) -> dict:
     top = scored[:6] if len(scored) > 6 else scored
 
     return {"flagged": flagged, "suggestions": top, "message": None}
+
+
+async def generate_meal_plan_from_bloodwork(db):
+    """Use AI to analyze blood markers and generate a full week's tailored meal plan with new recipes."""
+    from app.services.pdf_parser import call_ai_api
+
+    # Get recent blood test markers (last 6 months)
+    six_months_ago = (datetime.now() - timedelta(days=180)).date()
+    recent_tests = db.query(BloodTest).filter(
+        BloodTest.date_tested >= six_months_ago
+    ).order_by(BloodTest.date_tested.desc()).all()
+
+    if not recent_tests:
+        return {"error": "No blood test data available. Upload results first."}
+
+    # Collect all markers from recent tests with flag status
+    all_markers = []
+    flagged_markers = []
+    for test in recent_tests:
+        for marker in test.markers:
+            info = {
+                "name": marker.marker_name,
+                "value": marker.value,
+                "unit": marker.unit,
+                "low_ref": marker.low_ref,
+                "high_ref": marker.high_ref,
+                "flagged": marker.is_flagged,
+            }
+            all_markers.append(info)
+            if marker.is_flagged:
+                direction = ""
+                if marker.low_ref is not None and marker.value < marker.low_ref:
+                    direction = "(LOW)"
+                elif marker.high_ref is not None and marker.value > marker.high_ref:
+                    direction = "(HIGH)"
+                flagged_markers.append(f"- {marker.marker_name}: {marker.value} {marker.unit} {direction}")
+
+    flagged_text = "\n".join(flagged_markers) if flagged_markers else "None — all markers normal"
+    marker_list = "\n".join([f"  {m['name']}: {m['value']} {m['unit']}" for m in all_markers[:20]])
+
+    messages = [
+        {
+            "role": "system",
+            "content": """You are a nutritionist and meal planner for a patient with diabetes and metabolic concerns.
+Generate a full week (Monday-Sunday) meal plan with Breakfast, Lunch, Dinner, and Snack for each day.
+
+For each meal slot, return ONE recipe entry. Return ONLY valid JSON with this exact structure:
+{
+  "meals": [
+    {
+      "day": "Monday",
+      "slot": "Breakfast",
+      "name": "Recipe name",
+      "description": "Brief one-line description",
+      "prep_time_min": 10,
+      "cook_time_min": 15,
+      "servings": 1,
+      "category": "breakfast",
+      "glycemic_rating": "low",
+      "instructions": "Step by step cooking instructions in one paragraph.",
+      "ingredients": [
+        {"name": "Ingredient", "quantity": 1.0, "unit": "cup"},
+      ],
+      "nutrition": {
+        "calories": 350,
+        "protein_g": 20,
+        "carbs_g": 40,
+        "fat_g": 12,
+        "fiber_g": 8,
+        "sugar_g": 6
+      }
+    }
+  ]
+}
+
+Dietary rules:
+- Focus on low-glycemic, high-fiber foods
+- Lean proteins, omega-3 rich sources (salmon, walnuts, flaxseed)
+- Plenty of vegetables, especially leafy greens
+- Minimal added sugar and refined carbs
+- Healthy fats (olive oil, avocado, nuts)
+- Portion-controlled meals around 400-600 calories per main meal, 150-250 for snacks
+- Each recipe should be different — no repeats across the week
+- Make it practical with ingredients from a regular grocery store
+- day values must be: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+- slot values must be: Breakfast, Lunch, Dinner, Snack"""
+        },
+        {
+            "role": "user",
+            "content": f"My recent blood test results:\n\nFlagged/out-of-range markers:\n{flagged_text}\n\nAll markers:\n{marker_list}\n\nPlease generate a complete week meal plan tailored to my health needs."
+        }
+    ]
+
+    raw_text = await call_ai_api(messages)
+
+    import json
+    import re
+    try:
+        result = json.loads(raw_text)
+    except json.JSONDecodeError:
+        match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if match:
+            result = json.loads(match.group(0))
+        else:
+            return {"error": "Could not parse AI meal plan response", "raw": raw_text[:300]}
+
+    return result.get("meals", [])
