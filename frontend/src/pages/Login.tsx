@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { Navigate } from 'react-router-dom'
+import api from '../lib/api'
 
 export default function Login() {
   const { user, login, setup } = useAuth()
@@ -8,6 +9,13 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSetup, setIsSetup] = useState(false)
+  const [needSetup, setNeedSetup] = useState(true)
+
+  useEffect(() => {
+    api.get('/auth/setup-check')
+      .then(({ data }) => setNeedSetup(!data.account_exists))
+      .catch(() => {})
+  }, [])
 
   if (user) return <Navigate to="/" replace />
 
@@ -22,9 +30,10 @@ export default function Login() {
       }
     } catch (err: any) {
       const msg = err?.response?.data?.detail || 'Something went wrong'
-      if (msg.includes('Account already exists')) {
+      if (msg.includes('Account already')) {
+        setNeedSetup(false)
         setIsSetup(false)
-        setError('Account already exists. Please login.')
+        setError('An account already exists. Please login.')
       } else {
         setError(msg)
       }
@@ -71,17 +80,12 @@ export default function Login() {
           {isSetup ? 'Create Account' : 'Login'}
         </button>
 
-        <p className="text-xs text-center text-[var(--text-muted)]">
-          {isSetup ? (
-            <>Already have an account?{' '}
-              <button type="button" onClick={() => setIsSetup(false)} className="text-primary-600 dark:text-primary-400">Login</button>
-            </>
-          ) : (
-            <>First time?{' '}
-              <button type="button" onClick={() => setIsSetup(true)} className="text-primary-600 dark:text-primary-400">Create account</button>
-            </>
-          )}
-        </p>
+        {needSetup && (
+          <p className="text-xs text-center text-[var(--text-muted)]">
+            First time?{' '}
+            <button type="button" onClick={() => setIsSetup(true)} className="text-primary-600 dark:text-primary-400">Create account</button>
+          </p>
+        )}
       </form>
     </div>
   )

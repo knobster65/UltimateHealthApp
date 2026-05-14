@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
@@ -8,6 +9,12 @@ from app.schemas import LoginRequest, TokenResponse, UserInfo
 from app.auth import hash_password, verify_password, create_token, get_current_user
 
 router = APIRouter()
+
+
+@router.get("/setup-check")
+def setup_check(db: Session = Depends(get_db)):
+    exists = db.execute(select(func.count(User.id))).scalar() > 0
+    return {"account_exists": exists}
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -32,7 +39,7 @@ def session(user: User = Depends(get_current_user)):
 def setup_account(req: LoginRequest, db: Session = Depends(get_db)):
     exists = db.execute(select(func.count(User.id))).scalar() > 0
     if exists:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account already exists")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists")
     user = User(username=req.username, password_hash=hash_password(req.password))
     db.add(user)
     db.commit()
