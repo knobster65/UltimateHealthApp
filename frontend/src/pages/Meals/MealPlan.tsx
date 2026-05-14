@@ -54,7 +54,7 @@ export default function MealPlan() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Meal Plans</h1>
+        <h1 className="text-xl font-bold text-[var(--text-primary)]">Meal Plans</h1>
         <button onClick={() => setShowForm(!showForm)}
           className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">
           {showForm ? 'Cancel' : '+ New Plan'}
@@ -62,38 +62,38 @@ export default function MealPlan() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Week Start</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Week Start</label>
               <input type="date" required value={weekStart} onChange={(e) => setWeekStart(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm" />
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)]" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Title</label>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`Week of ${weekEndDisplay}`}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm" />
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)]" />
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
               <thead>
                 <tr>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Meal</th>
-                  {days.map((d) => <th key={d} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">{d.slice(0, 3)}</th>)}
+                  <th className="px-2 py-2 text-left text-xs font-medium text-[var(--text-muted)] uppercase w-24">Meal</th>
+                  {days.map((d) => <th key={d} className="px-2 py-2 text-center text-xs font-medium text-[var(--text-muted)] uppercase">{d.slice(0, 3)}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {slots.map((slot, si) => (
                   <tr key={slot} className="divide-x">
-                    <td className="px-2 py-2 font-medium text-gray-700">{slot}</td>
+                    <td className="px-2 py-2 font-medium text-[var(--text-secondary)]">{slot}</td>
                     {days.map((_, di) => {
                       const selected = assignments[di * 10 + si]
                       return (
                         <td key={di} className="px-1 py-2">
                           <select value={selected || ''} onChange={(e) => setSlot(di, si, Number(e.target.value))}
-                            className="w-full px-1 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            className="w-full px-1 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 bg-[var(--bg-surface)] text-[var(--text-primary)]"
                             defaultValue="">
                             <option value="">-</option>
                             {(recipes || []).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -116,26 +116,26 @@ export default function MealPlan() {
 
       {!showForm && (
         <>
-          {isLoading ? <p className="text-gray-500">Loading...</p> : !plans || plans.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm p-8 border text-center">
-              <p className="text-gray-500 mb-4">No meal plans yet.</p>
+          {isLoading ? <p className="text-[var(--text-muted)]">Loading...</p> : !plans || plans.length === 0 ? (
+            <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm p-8 border text-center">
+              <p className="text-[var(--text-muted)] mb-4">No meal plans yet.</p>
               <button onClick={() => setShowForm(true)} className="text-primary-600 hover:underline text-sm font-medium">Create your first plan</button>
             </div>
           ) : (
             <div className="space-y-4">
               {plans.map((plan) => (
-                <div key={plan.id} className="bg-white rounded-xl shadow-sm border p-5">
+                <div key={plan.id} className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <h3 className="font-semibold text-gray-900">{plan.title}</h3>
-                      <p className="text-xs text-gray-500">Starts: {new Date(plan.week_start).toLocaleDateString()}</p>
+                      <h3 className="font-semibold text-[var(--text-primary)]">{plan.title}</h3>
+                      <p className="text-xs text-[var(--text-muted)]">Starts: {new Date(plan.week_start).toLocaleDateString()}</p>
                     </div>
                     <button onClick={() => deleteMutation.mutate(plan.id)}
-                      className="text-gray-400 hover:text-red-600 text-sm">Delete</button>
+                      className="text-[var(--text-muted)] hover:text-red-600 text-sm">Delete</button>
                   </div>
                   <div className="flex gap-2 text-xs">
                     {plan.entries.map((e) => (
-                      <span key={e.id} className="bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      <span key={e.id} className="bg-[var(--bg-hover)] text-[var(--text-secondary)] px-2 py-1 rounded">
                         {days[e.day_of_week]?.slice(0, 3)} · {e.meal_slot}: Recipe #{e.recipe_id}
                       </span>
                     ))}

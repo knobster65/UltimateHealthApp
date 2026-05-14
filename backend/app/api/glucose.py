@@ -94,25 +94,32 @@ def get_stats(
 
 @router.post("/config")
 def set_config(req: NightscoutConfig, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    import os
+    import re
     env_path = ".env"
-    lines = []
+    lines: list[str] = []
     try:
         with open(env_path) as f:
             lines = f.readlines()
     except FileNotFoundError:
         pass
-    written = set()
-    new_lines = []
+
+    ns_keys = {"NIGHTSCOUT_URL", "NIGHTSCOUT_API_TOKEN"}
+    new_lines: list[str] = []
+    found = {k: False for k in ns_keys}
+
     for line in lines:
-        key = line.split("=")[0].strip()
-        if key in ("NIGHTSCOUT_URL", "NIGHTSCOUT_API_TOKEN"):
+        key = line.split("=", 1)[0].strip()
+        if key in ns_keys:
+            found[key] = True
             continue
         new_lines.append(line)
-    new_lines.append(f"NIGHTSCOUT_URL={req.nightscout_url}\n")
-    new_lines.append(f"NIGHTSCOUT_API_TOKEN={req.api_token}\n")
+
+    for key, val in [("NIGHTSCOUT_URL", req.nightscout_url), ("NIGHTSCOUT_API_TOKEN", req.api_token)]:
+        new_lines.append(f"{key}={val}\n")
+
     with open(env_path, "w") as f:
         f.writelines(new_lines)
+
     return {"ok": True}
 
 

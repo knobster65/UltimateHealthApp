@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { useAuth } from './hooks/useAuth'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -12,6 +13,7 @@ import BloodTestsTrends from './pages/BloodTests/Trends'
 import Recipes from './pages/Meals/Recipes'
 import MealPlan from './pages/Meals/MealPlan'
 import ShoppingList from './pages/Meals/ShoppingList'
+import MealSuggestions from './pages/Meals/Suggestions'
 import GlucoseIndex from './pages/Glucose/Index'
 import ExerciseIndex from './pages/Exercise/Index'
 
@@ -30,8 +32,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -41,6 +44,7 @@ function App() {
           <Route path="/blood-tests/trends" element={<ProtectedRoute><BloodTestsTrends /></ProtectedRoute>} />
           <Route path="/meals/recipes" element={<ProtectedRoute><Recipes /></ProtectedRoute>} />
           <Route path="/meals/plans" element={<ProtectedRoute><MealPlan /></ProtectedRoute>} />
+          <Route path="/meals/suggestions" element={<ProtectedRoute><MealSuggestions /></ProtectedRoute>} />
           <Route path="/meals/shopping" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
           <Route path="/glucose" element={<ProtectedRoute><GlucoseIndex /></ProtectedRoute>} />
           <Route path="/exercise" element={<ProtectedRoute><ExerciseIndex /></ProtectedRoute>} />
@@ -48,6 +52,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
+    </ThemeProvider>
   )
 }
 

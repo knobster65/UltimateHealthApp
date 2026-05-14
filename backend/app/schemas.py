@@ -226,3 +226,32 @@ class ExerciseSummary(BaseModel):
     total_duration_min: float
     total_calories: float
     by_type: dict[str, dict]
+
+
+# ── Dashboard ─────────────────────────────────────────
+class LatestGlucose(BaseModel):
+    value_mgdl: float
+    date_time: datetime
+    trend: Optional[str] = None
+
+
+class BloodTestSummary(BaseModel):
+    total_tests: int
+    flagged_markers: int
+    latest_test_date: Optional[date] = None
+
+
+class DashboardStats(BaseModel):
+    glucose_avg_7d: Optional[float] = None
+    glucose_tir_pct: Optional[float] = None
+    glucose_gmi: Optional[float] = None
+    latest_glucose: Optional[LatestGlucose] = None
+
+    blood_tests: Optional[BloodTestSummary] = None
+
+    exercise_workouts_this_week: int = 0
+    exercise_minutes_this_week: float = 0.0
+    exercise_calories_this_week: float = 0.0
+
+    recipe_count: int = 0
+    meal_plan_count: int = 0

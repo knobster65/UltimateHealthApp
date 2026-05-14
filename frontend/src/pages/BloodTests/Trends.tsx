@@ -46,13 +46,13 @@ export default function BloodTestsTrends() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">Blood Test Trends</h1>
+      <h1 className="text-xl font-bold text-[var(--text-primary)]">Blood Test Trends</h1>
 
-      <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
+      <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Select Marker to Track</label>
+          <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Select Marker to Track</label>
           <select value={selectedMarker} onChange={(e) => setSelectedMarker(e.target.value)}
-            className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 border rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
             defaultValue="">
             <option value="" disabled>Choose a marker...</option>
             {allMarkers.map((m) => (
@@ -77,24 +77,24 @@ export default function BloodTestsTrends() {
             </ResponsiveContainer>
           </div>
         ) : selectedMarker ? (
-          <p className="text-gray-400 text-sm">No trend data available for this marker.</p>
+          <p className="text-[var(--text-muted)] text-sm">No trend data available for this marker.</p>
         ) : (
-          <p className="text-gray-400 text-sm">Select a marker above to view trends.</p>
+          <p className="text-[var(--text-muted)] text-sm">Select a marker above to view trends.</p>
         )}
       </div>
 
       {chartData.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="font-medium text-gray-900 mb-3">{selectedMarker} History</h3>
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6">
+          <h3 className="font-medium text-[var(--text-primary)] mb-3">{selectedMarker} History</h3>
+          <table className="min-w-full divide-y divide-[var(--border-default)]">
             <thead>
               <tr>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase px-3 py-2">Date</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase px-3 py-2">Value</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase px-3 py-2">Status</th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] uppercase px-3 py-2">Date</th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] uppercase px-3 py-2">Value</th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] uppercase px-3 py-2">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[var(--border-default)]">
               {chartData.map((row, i) => {
                 const flagged = (row.lowRef != null && row.value < row.lowRef) || (row.highRef != null && row.value > row.highRef)
                 return (

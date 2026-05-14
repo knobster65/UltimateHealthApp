@@ -143,9 +143,44 @@ export interface ExerciseEntry {
   import_source: string
 }
 
+export interface ExerciseSummary {
+  total_workouts: number
+  total_duration_min: number
+  total_calories: number
+  by_type: Record<string, { count: number; duration_min: number; calories: number }>
+}
+
 export interface ShoppingListItem {
   category?: string | null
   name: string
   total_quantity: number
   unit: string
+}
+
+export interface DashboardStats {
+  glucose_avg_7d?: number | null
+  glucose_tir_pct?: number | null
+  glucose_gmi?: number | null
+  latest_glucose?: LatestGlucose | null
+
+  blood_tests?: BloodTestSummary | null
+
+  exercise_workouts_this_week: number
+  exercise_minutes_this_week: number
+  exercise_calories_this_week: number
+
+  recipe_count: number
+  meal_plan_count: number
+}
+
+export interface LatestGlucose {
+  value_mgdl: number
+  date_time: string
+  trend?: string | null
+}
+
+export interface BloodTestSummary {
+  total_tests: number
+  flagged_markers: number
+  latest_test_date?: string | null
 }

@@ -32,35 +32,35 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow w-full max-w-sm space-y-5">
-        <h1 className="text-xl font-bold text-gray-900 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-page)]">
+      <form onSubmit={handleSubmit} className="bg-[var(--bg-surface)] p-8 rounded-xl shadow w-full max-w-sm space-y-5 border border-[var(--border-default)]">
+        <h1 className="text-xl font-bold text-[var(--text-primary)] text-center">
           {isSetup ? 'Create Account' : 'Login'}
         </h1>
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>
+          <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 p-2 rounded">{error}</p>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Username</label>
           <input
             type="text"
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Password</label>
           <input
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
 
@@ -71,14 +71,14 @@ export default function Login() {
           {isSetup ? 'Create Account' : 'Login'}
         </button>
 
-        <p className="text-xs text-center text-gray-500">
+        <p className="text-xs text-center text-[var(--text-muted)]">
           {isSetup ? (
             <>Already have an account?{' '}
-              <button type="button" onClick={() => setIsSetup(false)} className="text-primary-600">Login</button>
+              <button type="button" onClick={() => setIsSetup(false)} className="text-primary-600 dark:text-primary-400">Login</button>
             </>
           ) : (
             <>First time?{' '}
-              <button type="button" onClick={() => setIsSetup(true)} className="text-primary-600">Create account</button>
+              <button type="button" onClick={() => setIsSetup(true)} className="text-primary-600 dark:text-primary-400">Create account</button>
             </>
           )}
         </p>

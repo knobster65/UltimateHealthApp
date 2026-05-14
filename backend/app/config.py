@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     NIGHTSCOUT_URL: Optional[str] = None
     NIGHTSCOUT_API_TOKEN: Optional[str] = ""
+    ALLOWED_ORIGINS: str = ""  # e.g. "https://karcass.com" (blank = allow all)
 
     model_config = {"env_file": ".env", "case_sensitive": False}
 
