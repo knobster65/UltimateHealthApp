@@ -15,7 +15,7 @@ const markerCategories = [
 
 export default function BloodTestsUpload() {
   const navigate = useNavigate()
-  const { createMutation, parsePdfMutation } = useBloodTests()
+  const { createMutation, parsePdfMutation, uploadPdfMutation } = useBloodTests()
   const [dateTested, setDateTested] = useState(new Date().toISOString().split('T')[0])
   const [labName, setLabName] = useState('')
   const [notes, setNotes] = useState('')
@@ -54,7 +54,7 @@ export default function BloodTestsUpload() {
       const result = await parsePdfMutation.mutateAsync(pdfFile)
       // Populate markers from AI parsing
       if (result.markers && result.markers.length > 0) {
-        setMarkers(result.markers.map(m => ({
+        setMarkers(result.markers.map((m: MarkerCreate) => ({
           category: m.category || 'other',
           marker_name: m.marker_name || '',
           value: m.value || 0,
