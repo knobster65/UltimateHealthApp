@@ -18,27 +18,48 @@ Return ONLY the JSON array, nothing else."""
 
 
 async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
-    """Send PDF to AbacusAI for intelligent extraction of blood test markers."""
+    """Send PDF pages to AbacusAI for intelligent extraction of blood test markers."""
     if not settings.ABACUSAI_API_KEY:
         raise ValueError("ABACUSAI_API_KEY not configured")
 
-    # Convert PDF to base64 for API
-    pdf_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+    # Extract text from PDF pages as base64 images for vision model
+    pages = _convert_pdf_to_images(pdf_bytes)
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    if pages:
+        # Send first page as image (covers most lab reports)
+        content = [
+            {"type": "text", "text": "Extract all blood test markers from this lab report."},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/png;base64,{pages[0]}",
+                    "detail": "high"
+                }
+            }
+        ]
+        messages.append({"role": "user", "content": content})
+    else:
+        # Fallback to raw PDF text extraction attempt
+        try:
+            from PyPDF2 import PdfReader
+            import io
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            text = "\n".join(page.extract_text() for page in reader.pages[:3])
+            messages.append({"role": "user", "content": f"Extract blood test markers from this text:\n{text}"})
+        except ImportError:
+            raise Exception("No PDF processing libraries available")
 
     payload = {
         "model": settings.ABACUSAI_MODEL,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": [
-                {"type": "document", "source": pdf_b64}
-            ]}
-        ],
+        "messages": messages,
         "response_format": {"type": "json_object"}
     }
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
-            "https://api.abacus.ai/v1/chat/completions",
+            "https://routellm.abacus.ai/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {settings.ABACUSAI_API_KEY}",
                 "Content-Type": "application/json"
@@ -51,6 +72,22 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
 
         result = response.json()
         return _extract_markers_from_response(result)
+
+
+def _convert_pdf_to_images(pdf_bytes: bytes) -> List[str]:
+    """Convert PDF pages to base64 PNG images."""
+    try:
+        from pdf2image import convert_from_bytes
+        pages = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=200)
+        import io
+        b64_images = []
+        for page in pages:
+            buffer = io.BytesIO()
+            page.save(buffer, format="PNG")
+            b64_images.append(base64.b64encode(buffer.getvalue()).decode('utf-8'))
+        return b64_images
+    except ImportError:
+        return []
 
 
 def _extract_markers_from_response(api_response: Dict[str, Any]) -> List[Dict[str, Any]]:

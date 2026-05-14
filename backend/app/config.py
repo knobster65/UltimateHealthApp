@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # AbacusAI for PDF parsing
     ABACUSAI_API_KEY: Optional[str] = None
-    ABACUSAI_MODEL: str = "qwen3-23b"  # Default model for document parsing
+    ABACUSAI_MODEL: str = "o4-mini"  # Default model for document parsing
 
     model_config = {"env_file": ".env", "case_sensitive": False, "extra": "ignore"}
 
