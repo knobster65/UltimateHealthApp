@@ -87,7 +87,7 @@ else:
     print(f"  [FAIL] Expected 401, got {status}")
 
 print("\n4. Session check with valid token")
-status, raw = request("GET", "/auth/session", extra_headers={"Authorization": f"Bearer {token}"})
+status, raw = request("GET", "/api/auth/session", extra_headers={"Authorization": f"Bearer {token}"})
 session_body = test("Session endpoint returns user info", status, raw)
 
 print("\n5. CORS preflight (OPTIONS to /api/auth/login)")
