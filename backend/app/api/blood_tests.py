@@ -14,7 +14,7 @@ from app.models import User, BloodTest, BloodMarker
 from app.auth import get_current_user
 from app.schemas import BloodTestCreate, BloodTestRead, BloodTestUpdate, MarkerRead
 from app.config import settings
-from app.services.pdf_parser import parse_pdf_with_abacusai
+from app.services.pdf_parser import parse_pdf_with_ai
 
 router = APIRouter()
 
@@ -117,7 +117,7 @@ async def parse_pdf(file: UploadFile = File(...), db: Session = Depends(get_db),
         raise HTTPException(status_code=400, detail="File too large")
 
     try:
-        markers = await parse_pdf_with_abacusai(pdf_bytes)
+        markers = await parse_pdf_with_ai(pdf_bytes)
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:

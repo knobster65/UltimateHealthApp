@@ -1,4 +1,4 @@
-"""AbacusAI-powered PDF parser for blood test results."""
+"""AI-powered PDF parser for blood test results - supports multiple providers."""
 
 import httpx
 import base64
@@ -19,18 +19,117 @@ SYSTEM_PROMPT = """You are a medical lab result extractor. Extract all blood tes
 Return ONLY the JSON array, nothing else."""
 
 
-async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
-    """Send PDF pages to AbacusAI for intelligent extraction of blood test markers."""
-    if not settings.ABACUSAI_API_KEY:
-        raise ValueError("ABACUSAI_API_KEY not configured")
+def _get_api_url() -> str:
+    """Get the API base URL based on configured provider."""
+    if settings.AI_BASE_URL:
+        return settings.AI_BASE_URL.rstrip('/') + '/v1/chat/completions'
 
-    # Extract text from PDF pages as base64 images for vision model
+    provider = settings.AI_PROVIDER.lower()
+    urls = {
+        'abacusai': 'https://routellm.abacus.ai/v1/chat/completions',
+        'openai': 'https://api.openai.com/v1/chat/completions',
+        'anthropic': None,  # Anthropic uses different API, handled separately
+    }
+
+    if provider in urls:
+        return urls[provider]
+    raise ValueError(f"Unknown AI provider: {settings.AI_PROVIDER}")
+
+
+async def call_ai_api(messages: list, model: str = None) -> str:
+    """Universal AI chat completion caller - works with OpenAI-compatible APIs."""
+    api_key = settings.AI_API_KEY
+    if not api_key:
+        raise ValueError(f"AI_API_KEY not configured for provider {settings.AI_PROVIDER}")
+
+    model_name = model or settings.AI_MODEL
+    url = _get_api_url()
+
+    # Check if this is Anthropic (different API format)
+    if settings.AI_PROVIDER.lower() == 'anthropic':
+        return await _call_anthropic(messages, model_name)
+
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": 0.1
+    }
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json=payload
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"{settings.AI_PROVIDER.title()} API error: {response.text}")
+
+        return _parse_response(response.json())
+
+
+async def _call_anthropic(messages: list, model_name: str) -> str:
+    """Call Anthropic's native API (non-OpenAI format)."""
+    # Convert messages format if needed - Anthropic uses content blocks
+    system_prompt = SYSTEM_PROMPT  # Will be set by caller or use default
+    payload_messages = [msg for msg in messages if msg['role'] != 'system']
+
+    # Extract system message if present
+    system_msg = ""
+    for msg in messages:
+        if msg.get('role') == 'system':
+            system_msg = msg.get('content', '')
+            break
+
+    payload = {
+        "model": model_name,
+        "system": system_msg or SYSTEM_PROMPT,
+        "messages": payload_messages,
+        "max_tokens": 4096,
+        "temperature": 0.1
+    }
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": settings.AI_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json"
+            },
+            json=payload
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"Anthropic API error: {response.text}")
+
+        result = response.json()
+        # Parse Anthropic response format
+        try:
+            return result['content'][0]['text']
+        except (KeyError, IndexError):
+            raise Exception("Invalid Anthropic response structure")
+
+
+def _parse_response(api_result: Dict[str, Any]) -> str:
+    """Extract text content from OpenAI-compatible response."""
+    try:
+        content = api_result['choices'][0]['message']['content']
+        return content if content else ""
+    except (KeyError, IndexError):
+        raise Exception(f"Invalid AI response structure: {api_result}")
+
+
+async def parse_pdf_with_ai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
+    """Parse blood test PDF using configured AI provider."""
     pages = _convert_pdf_to_images(pdf_bytes)
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     if pages:
-        # Send first page at higher quality
         content = [
             {"type": "text", "text": "Please read this medical laboratory report image and extract all test results into a JSON array."},
             {
@@ -43,7 +142,6 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
         ]
         messages.append({"role": "user", "content": content})
 
-        # Add second page if available for more context
         if len(pages) > 1:
             messages.append({
                 "role": "user",
@@ -52,10 +150,8 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
                 ]
             })
 
-        # Ask model to compile everything into JSON array
         messages.append({"role": "user", "content": [{"type": "text", "text": "Return ONLY a JSON array of all the test markers you see."}]})
     else:
-        # Fallback to raw PDF text extraction attempt
         try:
             from PyPDF2 import PdfReader
             import io
@@ -65,34 +161,11 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
         except ImportError:
             raise Exception("No PDF processing libraries available")
 
-    payload = {
-        "model": settings.ABACUSAI_MODEL,
-        "messages": messages,
-        "temperature": 0.1
-    }
+    # Call the AI API
+    raw_text = await call_ai_api(messages)
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            "https://routellm.abacus.ai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.ABACUSAI_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json=payload
-        )
-
-        if response.status_code != 200:
-            raise Exception(f"AbacusAI API error: {response.text}")
-
-        raw_result = response.json()
-        # Debug logging: save raw response to file for inspection
-        try:
-            with open("/tmp/abacusai_debug_response.txt", "w") as f:
-                json.dump(raw_result, f, indent=2)
-        except Exception:
-            pass
-
-        return _extract_markers_from_response(raw_result)
+    # Parse JSON response
+    return _extract_markers_from_text(raw_text)
 
 
 def _convert_pdf_to_images(pdf_bytes: bytes) -> List[str]:
@@ -111,18 +184,12 @@ def _convert_pdf_to_images(pdf_bytes: bytes) -> List[str]:
         return []
 
 
-def _extract_markers_from_response(api_response: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Parse the AbacusAI response into marker objects."""
+def _extract_markers_from_text(content: str) -> List[Dict[str, Any]]:
+    """Parse AI response text into marker objects."""
     import re
 
-    try:
-        content = api_response["choices"][0]["message"]["content"]
-    except (KeyError, IndexError):
-        logging.error(f"AbacusAI raw response structure: {api_response}")
-        raise Exception("Invalid response structure from AbacusAI API")
-
     if not content or not isinstance(content, str):
-        raise Exception("Empty or invalid response content from AbacusAI")
+        raise Exception("Empty or invalid response content from AI provider")
 
     try:
         markers = json.loads(content)
@@ -132,15 +199,13 @@ def _extract_markers_from_response(api_response: Dict[str, Any]) -> List[Dict[st
         match = re.search(r'\[\s*{.*}\s*\]', content, re.DOTALL)
         if match:
             try:
-                result = json.loads(match.group(0))
-                return [m for m in result if isinstance(m, dict)]
+                return [m for m in json.loads(match.group(0)) if isinstance(m, dict)]
             except json.JSONDecodeError:
                 pass
 
-        raise Exception(f"Could not parse response as JSON. Model returned: {content[:200]}...")
+        raise Exception(f"Could not parse response as JSON. AI returned: {content[:200]}...")
 
 
 def get_supported_categories() -> List[str]:
     """Return list of known blood test categories for validation."""
-    return ["lipids", "glucose", "cbc", "liver", "kidney", "thyroid"]# UltimateHealthApp
-# UltimateHealthApp
+    return ["lipids", "glucose", "cbc", "liver", "kidney", "thyroid"]
