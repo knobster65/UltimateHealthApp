@@ -184,3 +184,23 @@ export interface BloodTestSummary {
   flagged_markers: number
   latest_test_date?: string | null
 }
+
+// ── Medications ────────────────────────────────
+export interface MedicationEntry {
+  id: number
+  medication_name: string
+  dosage?: string | null
+  frequency?: string | null
+  start_date: string
+  end_date?: string | null
+  notes?: string | null
+}
+
+export interface MedicationCreate {
+  medication_name: string
+  dosage?: string | null
+  frequency?: string | null
+  start_date: string
+  end_date?: string | null
+  notes?: string | null
+}

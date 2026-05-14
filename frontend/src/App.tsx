@@ -16,6 +16,8 @@ import ShoppingList from './pages/Meals/ShoppingList'
 import MealSuggestions from './pages/Meals/Suggestions'
 import GlucoseIndex from './pages/Glucose/Index'
 import ExerciseIndex from './pages/Exercise/Index'
+import MedicationsIndex from './pages/Medications/Index'
+import CheckInteractions from './pages/Medications/CheckInteractions'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +50,8 @@ function App() {
           <Route path="/meals/shopping" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
           <Route path="/glucose" element={<ProtectedRoute><GlucoseIndex /></ProtectedRoute>} />
           <Route path="/exercise" element={<ProtectedRoute><ExerciseIndex /></ProtectedRoute>} />
+          <Route path="/medications" element={<ProtectedRoute><MedicationsIndex /></ProtectedRoute>} />
+          <Route path="/medications/check" element={<ProtectedRoute><CheckInteractions /></ProtectedRoute>} />
           <Route path="/*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

@@ -24,6 +24,10 @@ const sectionNavs = [
   { title: 'Exercise', children: [
     { label: 'Workouts', path: '/exercise' },
   ]},
+  { title: 'Medications', children: [
+    { label: 'My Medications', path: '/medications' },
+    { label: 'Check Interactions', path: '/medications/check' },
+  ]},
 ]
 
 function isSectionActive(path: string, location: string) {

@@ -153,3 +153,26 @@ class ExerciseEntry(Base):
     max_heart_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     import_source: Mapped[str] = mapped_column(String(100), default="apple_health")
     import_batch_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+
+class MedicationEntry(Base):
+    __tablename__ = "medication_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    medication_name: Mapped[str] = mapped_column(String(100))
+    dosage: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    frequency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)  # NULL means currently taking
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class MedicationInteraction(Base):
+    __tablename__ = "medication_interactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    medication_name: Mapped[str] = mapped_column(String(100))
+    blood_marker: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    interaction_type: Mapped[str] = mapped_column(String(20))  # "warning" or "info"
+    description: Mapped[str] = mapped_column(Text)
+    date_found: Mapped[date] = mapped_column(Date, default=date.today)

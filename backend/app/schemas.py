@@ -255,3 +255,45 @@ class DashboardStats(BaseModel):
 
     recipe_count: int = 0
     meal_plan_count: int = 0
+
+
+# ── Medications ───────────────────────────────────────
+class MedicationCreate(BaseModel):
+    medication_name: str
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
+    start_date: date
+    end_date: Optional[date] = None
+    notes: Optional[str] = None
+
+
+class MedicationRead(BaseModel):
+    id: int
+    medication_name: str
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
+    start_date: date
+    end_date: Optional[date] = None
+    notes: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class MedicationUpdate(BaseModel):
+    medication_name: Optional[str] = None
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    notes: Optional[str] = None
+
+
+class MedicationInteractionRead(BaseModel):
+    id: int
+    medication_name: str
+    blood_marker: Optional[str] = None
+    interaction_type: str  # "warning" or "info"
+    description: str
+    date_found: date
+
+    model_config = {"from_attributes": True}
