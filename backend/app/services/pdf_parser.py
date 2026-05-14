@@ -30,9 +30,9 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     if pages:
-        # Send first page as image (covers most lab reports)
+        # Send first page at higher quality
         content = [
-            {"type": "text", "text": "Extract all blood test markers from this lab report."},
+            {"type": "text", "text": "Please read this medical laboratory report image and extract all test results into a JSON array."},
             {
                 "type": "image_url",
                 "image_url": {
@@ -42,6 +42,18 @@ async def parse_pdf_with_abacusai(pdf_bytes: bytes) -> List[Dict[str, Any]]:
             }
         ]
         messages.append({"role": "user", "content": content})
+
+        # Add second page if available for more context
+        if len(pages) > 1:
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{pages[1]}", "detail": "high"}}
+                ]
+            })
+
+        # Ask model to compile everything into JSON array
+        messages.append({"role": "user", "content": [{"type": "text", "text": "Return ONLY a JSON array of all the test markers you see."}]})
     else:
         # Fallback to raw PDF text extraction attempt
         try:
@@ -87,7 +99,7 @@ def _convert_pdf_to_images(pdf_bytes: bytes) -> List[str]:
     """Convert PDF pages to base64 PNG images."""
     try:
         from pdf2image import convert_from_bytes
-        pages = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=200)
+        pages = convert_from_bytes(pdf_bytes, first_page=1, last_page=2, dpi=300)
         import io
         b64_images = []
         for page in pages:
