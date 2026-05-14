@@ -15,6 +15,7 @@ SYSTEM_PROMPT = """You are a medical lab result extractor. Extract all blood tes
 - category: Which category this belongs to (lipids, glucose, cbc, liver, kidney, thyroid)
 - low_ref: Lower bound of normal range if shown
 - high_ref: Upper bound of normal range if shown
+- test_date: The date this test was performed (extract from the document header/footer). Return as YYYY-MM-DD string or null if not found. Include this field on every marker object.
 
 Return ONLY the JSON array, nothing else."""
 

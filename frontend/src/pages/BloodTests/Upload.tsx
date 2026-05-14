@@ -54,7 +54,7 @@ export default function BloodTestsUpload() {
       const result = await parsePdfMutation.mutateAsync(pdfFile)
       // Populate markers from AI parsing
       if (result.markers && result.markers.length > 0) {
-        setMarkers(result.markers.map((m: MarkerCreate) => ({
+        setMarkers(result.markers.map((m: MarkerCreate & { test_date?: string | null }) => ({
           category: m.category || 'other',
           marker_name: m.marker_name || '',
           value: m.value || 0,
@@ -62,6 +62,11 @@ export default function BloodTestsUpload() {
           low_ref: m.low_ref,
           high_ref: m.high_ref,
         })))
+        // Auto-fill date from extracted test_date if found on any marker
+        const foundDate = result.markers.find((m: any) => m.test_date)?.test_date
+        if (foundDate) {
+          setDateTested(foundDate)
+        }
       } else {
         setApiError('No markers found in PDF')
       }
