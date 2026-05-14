@@ -1,4 +1,6 @@
 from datetime import datetime, date, time
+from typing import Optional
+
 from sqlalchemy import (
     String, Float, Text, Boolean, Integer, DateTime, Date, ForeignKey, func
 )
