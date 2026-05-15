@@ -95,7 +95,7 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depe
         raise HTTPException(status_code=502, detail=f"AI service error: {detail}")
 
     if isinstance(result, dict) and "error" in result:
-        raise HTTPException(status_code=422, detail=result["error"])
+        raise HTTPException(status_code=422, detail=f"{result['error']} — raw: {result.get('raw', '')}")
 
     if not result:
         raise HTTPException(status_code=422, detail="AI returned no meal suggestions")
