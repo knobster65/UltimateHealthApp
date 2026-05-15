@@ -217,42 +217,53 @@ async def generate_meal_plan_from_bloodwork(db, user_id: int):
     # Compute daily nutrition targets from flagged markers.
     daily_targets = _compute_daily_targets(all_markers)
 
-    messages = [
-        {
-            "role": "system",
-            "content": """You are a nutritionist for a diabetic patient. Generate 7 days × 4 meals (Breakfast, Lunch, Dinner, Snack) = 28 meals total.
+    # Build shared system prompt.
+    system_content = """You are a nutritionist for a diabetic patient. Generate meals following these dietary rules: low-glycemic, high-fiber, lean protein. Main meals 400-600 cal, snacks 150-250 cal. Each recipe must be unique — no repeats.
 
 Return ONLY valid JSON: {"meals": [...]}. Each meal:
 - day, slot, name, description, prep_time_min, cook_time_min, servings, category, glycemic_rating
-- instructions: Concise step-by-step cooking directions (3-5 short steps)
+- instructions: Full step-by-step cooking directions (at least 5 detailed steps). Be specific about temperatures, times, and quantities.
 - ingredients: [{"name", "quantity", "unit", "category"}] — categories: produce, proteins, dairy, grains, pantry, frozen, spices-herbs, beverages
-- nutrition: {"calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g"}
+- nutrition: {"calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g"}""" + daily_targets
 
-Rules: low-glycemic, high-fiber, lean protein. Main meals 400-600 cal, snacks 150-250 cal. No repeats.""" + daily_targets
-        },
-        {
-            "role": "user",
-            "content": f"Blood tests — flagged:\n{flagged_text}\n\nAll markers:\n{marker_list}\n\nGenerate full meal plan with detailed instructions."
-        }
-    ]
+    system_msg = {"role": "system", "content": system_content}
 
-    raw_text = await call_ai_api(messages)
+    # Split into two batches (14 meals each) to give room for detailed instructions.
+    batch1_days = ["Monday", "Tuesday", "Wednesday"]
+    batch2_days = ["Thursday", "Friday", "Saturday", "Sunday"]
+    user_msg = f"Blood tests — flagged:\n{flagged_text}\n\nAll markers:\n{marker_list}"
 
-    import json
-    import re
-    from json_repair import repair_json
+    all_meals = []
 
-    # Strip markdown code fences if present.
-    cleaned = re.sub(r'^```(?:json)?\s*\n?', '', raw_text, flags=re.MULTILINE)
-    cleaned = re.sub(r'\n?```\s*$', '', cleaned, flags=re.MULTILINE)
+    for batch_days, count in [(batch1_days, 12), (batch2_days, 16)]:
+        days_str = ", ".join(batch_days)
+        messages = [
+            system_msg,
+            {
+                "role": "user",
+                "content": f"Generate {count} meals for: {days_str}. Include Breakfast, Lunch, Dinner, Snack for each day. Be very detailed with cooking instructions."
+            }
+        ]
 
-    try:
-        result = json.loads(cleaned)
-    except json.JSONDecodeError:
-        repaired = repair_json(cleaned)
-        if isinstance(repaired, dict):
-            result = repaired
-        else:
-            return {"error": f"Could not parse AI response as JSON. Response length: {len(raw_text)} chars.", "raw": raw_text[:1000]}
+        raw_text = await call_ai_api(messages)
 
-    return result.get("meals", [])
+        import json
+        import re
+        from json_repair import repair_json
+
+        # Strip markdown code fences if present.
+        cleaned = re.sub(r'^```(?:json)?\s*\n?', '', raw_text, flags=re.MULTILINE)
+        cleaned = re.sub(r'\n?```\s*$', '', cleaned, flags=re.MULTILINE)
+
+        try:
+            result = json.loads(cleaned)
+        except json.JSONDecodeError:
+            repaired = repair_json(cleaned)
+            if isinstance(repaired, dict):
+                result = repaired
+            else:
+                return {"error": f"Could not parse AI response as JSON. Response length: {len(raw_text)} chars.", "raw": raw_text[:1000]}
+
+        all_meals.extend(result.get("meals", []))
+
+    return all_meals
