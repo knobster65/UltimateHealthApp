@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import api from '../../lib/api'
 import { Link } from 'react-router-dom'
 import { useMealPlans } from '../../hooks/useMealPlans'
@@ -22,9 +22,7 @@ type GenStep = 0 | 1 | 2
 const stepLabels = ['Analyzing blood tests...', 'Generating recipes...', 'Building your meal plan...']
 
 export default function AIMealPlanner() {
-  const queryClient = useQueryClient()
-  const { generateAIMealPlanMutation, planDetailQuery } = useMealPlans()
-  const [genPlanId, setGenPlanId] = useState<number | null>(null)
+  const { generateAIMealPlanMutation, generatingPlanId, resetGeneratingPlan, planDetailQuery } = useMealPlans()
   const [genStep, setGenStep] = useState<GenStep>(0)
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
 
@@ -47,16 +45,9 @@ export default function AIMealPlanner() {
     }
   }, [generateAIMealPlanMutation.isPending])
 
-  // Capture plan_id on success
-  useEffect(() => {
-    if (generateAIMealPlanMutation.isSuccess && generateAIMealPlanMutation.data?.plan_id) {
-      setGenPlanId(generateAIMealPlanMutation.data.plan_id)
-    }
-  }, [generateAIMealPlanMutation.isSuccess, generateAIMealPlanMutation.data])
-
-  // Fetch plan detail when we have a plan_id
-  const planDetail = genPlanId
-    ? planDetailQuery(genPlanId).data
+  // generatingPlanId is set by the hook's onSuccess callback — reliable, no timing issues
+  const planDetail = generatingPlanId
+    ? planDetailQuery(generatingPlanId).data
     : null
 
   // Compute shopping list from plan detail entries
@@ -131,13 +122,13 @@ export default function AIMealPlanner() {
       <AnalysisPanel data={analysis} isLoading={analyzing} />
 
       {/* Generate button */}
-      {!genPlanId && (
+      {!generatingPlanId && (
         <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6 text-center space-y-4">
           <p className="text-sm text-[var(--text-secondary)]">
             Based on your blood test results, the AI will generate a personalized weekly meal plan with recipes and shopping list.
           </p>
           <button
-            onClick={() => { setGenPlanId(null); generateAIMealPlanMutation.mutate() }}
+            onClick={() => { resetGeneratingPlan(); generateAIMealPlanMutation.mutate() }}
             disabled={generateAIMealPlanMutation.isPending}
             className="bg-emerald-600 text-white px-8 py-3 rounded-xl text-base font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
@@ -166,14 +157,14 @@ export default function AIMealPlanner() {
       )}
 
       {/* Generated plan display */}
-      {genPlanId && !planDetail && (
+      {generatingPlanId && !planDetail && (
         <div className="flex items-center gap-3 bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6">
           <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-[var(--text-muted)] text-sm">Loading meal plan details...</p>
         </div>
       )}
 
-      {genPlanId && planDetail && (
+      {generatingPlanId && planDetail && (
         <>
           {/* Plan header */}
           <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-5 flex items-center justify-between">
@@ -186,13 +177,13 @@ export default function AIMealPlanner() {
                 View all plans
               </Link>
               <button
-                onClick={() => window.open(`/meals/print/${genPlanId}`, '_blank')}
+                onClick={() => window.open(`/meals/print/${generatingPlanId}`, '_blank')}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 Print
               </button>
               <button
-                onClick={() => { setGenPlanId(null); setCheckedItems(new Set()) }}
+                onClick={() => { resetGeneratingPlan(); setCheckedItems(new Set()) }}
                 className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
               >
                 Generate new plan

@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useCallback } from 'react'
 import api from '../lib/api'
 import type { MealPlan, ShoppingListItem, MealPlanDetail, LatestPlanResponse } from '../types'
 
 export function useMealPlans() {
   const queryClient = useQueryClient()
+  const [generatingPlanId, setGeneratingPlanId] = useState<number | null>(null)
 
   const { data: plans, isLoading } = useQuery<MealPlan[]>({
     queryKey: ['meal-plans'],
@@ -31,14 +33,21 @@ export function useMealPlans() {
   const generateAIMealPlanMutation = useMutation({
     mutationFn: async () => {
       const { data } = await api.post('/suggestions/generate')
-      return data
+      return data as { plan_id: number; plan_title: string; recipes_created: number }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Set the new plan id immediately — before invalidations trigger re-renders
+      setGeneratingPlanId(data.plan_id)
       queryClient.invalidateQueries({ queryKey: ['meal-plans'] })
       queryClient.invalidateQueries({ queryKey: ['recipes'] })
       queryClient.invalidateQueries({ queryKey: ['meal-plan-latest'] })
     },
+    onError: () => {
+      setGeneratingPlanId(null)
+    },
   })
+
+  const resetGeneratingPlan = useCallback(() => setGeneratingPlanId(null), [])
 
   const shoppingListQuery = (planId: number) =>
     useQuery<ShoppingListItem[]>({
@@ -70,6 +79,7 @@ export function useMealPlans() {
 
   return {
     plans, isLoading, createMutation, deleteMutation,
-    generateAIMealPlanMutation, shoppingListQuery, planDetailQuery, latestPlanQuery,
+    generateAIMealPlanMutation, generatingPlanId, resetGeneratingPlan,
+    shoppingListQuery, planDetailQuery, latestPlanQuery,
   }
 }
