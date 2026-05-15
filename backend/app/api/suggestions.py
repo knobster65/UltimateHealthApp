@@ -151,8 +151,8 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depe
 
         created_recipes.append({
             "recipe_id": recipe.id,
-            "day_of_week": day_map.get(meal.get("day", "").lower(), 0),
-            "meal_slot": meal.get("slot", "lunch").lower(),
+            "day_of_week": day_map.get(str(meal.get("day", "")).lower(), 0),
+            "meal_slot": str(meal.get("slot", "lunch")).lower(),
         })
 
     today = date.today()
