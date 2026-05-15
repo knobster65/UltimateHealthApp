@@ -257,28 +257,19 @@ Return the full JSON object with all 28 meals. No markdown, no explanation text.
 
     import json
     import re
+    from json_repair import repair_json
 
-    def _try_parse(text: str):
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as e:
-            # Fix common issues: trailing commas before } or ]
-            fixed = re.sub(r',\s*([}\]])', r'\1', text)
-            try:
-                return json.loads(fixed)
-            except json.JSONDecodeError:
-                raise e
+    # Strip markdown code fences if present.
+    cleaned = re.sub(r'^```(?:json)?\s*\n?', '', raw_text, flags=re.MULTILINE)
+    cleaned = re.sub(r'\n?```\s*$', '', cleaned, flags=re.MULTILINE)
 
     try:
-        result = _try_parse(raw_text)
+        result = json.loads(cleaned)
     except json.JSONDecodeError:
-        match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-        if match:
-            try:
-                result = _try_parse(match.group(0))
-            except json.JSONDecodeError as e:
-                return {"error": f"AI returned malformed JSON: {e}", "raw": raw_text[:300]}
+        repaired = repair_json(cleaned)
+        if isinstance(repaired, dict):
+            result = repaired
         else:
-            return {"error": "Could not parse AI meal plan response", "raw": raw_text[:300]}
+            return {"error": f"Could not parse AI response as JSON", "raw": raw_text[:300]}
 
     return result.get("meals", [])
