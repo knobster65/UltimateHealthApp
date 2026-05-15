@@ -81,7 +81,12 @@ def apply_suggestions(db: Session = Depends(get_db), user: User = Depends(get_cu
 @router.post("/generate")
 async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Use AI to analyze blood tests and generate a full week's meal plan with new recipes."""
-    result = await generate_meal_plan_from_bloodwork(db, user.id)
+    try:
+        result = await generate_meal_plan_from_bloodwork(db, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
 
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])

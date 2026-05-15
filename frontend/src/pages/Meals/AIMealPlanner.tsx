@@ -152,9 +152,15 @@ export default function AIMealPlanner() {
             </div>
           )}
           {generateAIMealPlanMutation.isError && (
-            <p className="text-sm text-red-600">
-              Generation failed. Check that blood test data exists and AI is configured.
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-red-600 font-medium">Generation failed</p>
+              <pre className="text-xs text-red-500 bg-red-50 dark:bg-red-900/10 p-3 rounded-lg whitespace-pre-wrap">
+                {JSON.stringify(
+                  (generateAIMealPlanMutation.error as any)?.response?.data ?? null,
+                  null, 2
+                ) || 'Unknown error — check backend is running and AI is configured.'}
+              </pre>
+            </div>
           )}
         </div>
       )}
