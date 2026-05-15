@@ -224,7 +224,7 @@ async def generate_meal_plan_from_bloodwork(db, user_id: int):
 
 Return ONLY valid JSON: {"meals": [...]}. Each meal:
 - day, slot, name, description, prep_time_min, cook_time_min, servings, category, glycemic_rating
-- instructions: Full step-by-step cooking directions (at least 4-5 steps per recipe)
+- instructions: Concise step-by-step cooking directions (3-5 short steps)
 - ingredients: [{"name", "quantity", "unit", "category"}] — categories: produce, proteins, dairy, grains, pantry, frozen, spices-herbs, beverages
 - nutrition: {"calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g"}
 

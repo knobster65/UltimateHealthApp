@@ -54,10 +54,10 @@ async def call_ai_api(messages: list, model: str = None) -> str:
         "model": model_name,
         "messages": messages,
         "temperature": 0.1,
-        "max_tokens": 32768,
+        "max_tokens": 16384,
     }
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=600.0) as client:
         response = await client.post(
             url,
             headers={
@@ -94,7 +94,7 @@ async def _call_anthropic(messages: list, model_name: str) -> str:
         "temperature": 0.1
     }
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=600.0) as client:
         response = await client.post(
             "https://api.anthropic.com/v1/messages",
             headers={
