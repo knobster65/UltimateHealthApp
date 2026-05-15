@@ -22,7 +22,7 @@ type GenStep = 0 | 1 | 2
 const stepLabels = ['Analyzing blood tests...', 'Generating recipes...', 'Building your meal plan...']
 
 export default function AIMealPlanner() {
-  const { generateAIMealPlanMutation, generatingPlanId, resetGeneratingPlan, planDetailQuery } = useMealPlans()
+  const { generateAIMealPlanMutation, generatingPlanId, planDetail, resetGeneratingPlan } = useMealPlans()
   const [genStep, setGenStep] = useState<GenStep>(0)
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
 
@@ -45,10 +45,7 @@ export default function AIMealPlanner() {
     }
   }, [generateAIMealPlanMutation.isPending])
 
-  // generatingPlanId is set by the hook's onSuccess callback — reliable, no timing issues
-  const planDetail = generatingPlanId
-    ? planDetailQuery(generatingPlanId).data
-    : null
+  // planDetail is now returned directly from the hook — always fetched when generatingPlanId is set.
 
   // Compute shopping list from plan detail entries
   const shoppingList = useMemo(() => {
