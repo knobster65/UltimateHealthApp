@@ -18,9 +18,9 @@ def list_readings(
     end: datetime | None = None,
     limit: int = Query(default=1000, le=5000),
     db: Session = Depends(get_db),
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
-    stmt = select(GlucoseReading)
+    stmt = select(GlucoseReading).where(GlucoseReading.user_id == user.id)
     if start:
         stmt = stmt.where(GlucoseReading.date_time >= start)
     if end:
@@ -30,17 +30,19 @@ def list_readings(
 
 
 @router.post("/sync")
-def trigger_sync(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    result = sync_nightscout(db)
+def trigger_sync(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    result = sync_nightscout(db, user.id)
     return result
 
 
 @router.get("/sync/status")
-def sync_status(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+def sync_status(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     last = db.execute(
-        select(GlucoseSyncLog).order_by(GlucoseSyncLog.synced_at.desc()).limit(1)
+        select(GlucoseSyncLog).where(GlucoseSyncLog.user_id == user.id).order_by(GlucoseSyncLog.synced_at.desc()).limit(1)
     ).scalar_one_or_none()
-    total = db.execute(select(func.count(GlucoseReading.id))).scalar()
+    total = db.execute(
+        select(func.count(GlucoseReading.id)).where(GlucoseReading.user_id == user.id)
+    ).scalar()
     return {"last_sync": last.synced_at.isoformat() if last else None, "total_readings": total}
 
 
@@ -49,15 +51,16 @@ def get_stats(
     start: datetime | None = None,
     end: datetime | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     if not end:
-        end = datetime.utcnow()
+        end = datetime.now()
     if not start:
         start = end - timedelta(days=7)
 
     stmt = (
         select(GlucoseReading)
+        .where(GlucoseReading.user_id == user.id)
         .where(GlucoseReading.date_time >= start, GlucoseReading.date_time <= end)
         .order_by(GlucoseReading.date_time.asc())
     )

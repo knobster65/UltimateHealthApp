@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.models import ExerciseEntry
 
 
-def parse_apple_health_csv(content: bytes, db: Session, batch_id: str) -> int:
+def parse_apple_health_csv(content: bytes, db: Session, batch_id: str, user_id: int) -> int:
     text = content.decode("utf-8")
     reader = csv.DictReader(io.StringIO(text), delimiter="\t")
 
@@ -44,6 +44,7 @@ def parse_apple_health_csv(content: bytes, db: Session, batch_id: str) -> int:
                 continue
 
             entry = ExerciseEntry(
+                user_id=user_id,
                 workout_type=activity,
                 start_time=start_dt,
                 end_time=end_dt or start_dt,
@@ -66,7 +67,7 @@ def parse_apple_health_csv(content: bytes, db: Session, batch_id: str) -> int:
 
 def parse_apple_date(date_str: str) -> datetime | None:
     formats = [
-        "%m/%/%d/%Y, %I:%M:%S %p",
+        "%m/%d/%Y, %I:%M:%S %p",
         "%m/%d/%Y, %H:%M:%S",
         "%Y-%m-%dT%H:%M:%S%z",
         "%Y-%m-%d %H:%M:%S",

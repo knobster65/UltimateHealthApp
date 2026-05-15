@@ -33,8 +33,8 @@ export function useAuth() {
     setUser({ id: 0, username })
   }
 
-  const setup = async (username: string, password: string) => {
-    const { data } = await api.post('/auth/setup', { username, password })
+  const signup = async (username: string, password: string) => {
+    const { data } = await api.post('/auth/signup', { username, password })
     localStorage.setItem('token', data.token)
     setUser({ id: 0, username })
   }
@@ -48,5 +48,5 @@ export function useAuth() {
     }
   }
 
-  return { user, loading, login, setup, logout, checkSession }
+  return { user, loading, login, signup, logout, checkSession }
 }

@@ -10,24 +10,24 @@ router = APIRouter()
 
 
 @router.get("/")
-def get_suggestions(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    return analyze_and_suggest(db)
+def get_suggestions(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return analyze_and_suggest(db, user.id)
 
 
 @router.post("/apply")
-def apply_suggestions(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+def apply_suggestions(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Create a meal plan from top suggested recipes."""
     from datetime import date, timedelta
     from sqlalchemy import select
     from app.models import Recipe, MealPlan, MealPlanEntry
 
-    result = analyze_and_suggest(db)
+    result = analyze_and_suggest(db, user.id)
     if result.get("message") or not result["suggestions"]:
         return result
 
     suggestion_ids = [s["recipe_id"] for s in result["suggestions"]]
     recipes = db.execute(
-        select(Recipe).where(Recipe.id.in_(suggestion_ids))
+        select(Recipe).where(Recipe.user_id == user.id, Recipe.id.in_(suggestion_ids))
     ).scalars().all()
 
     if not recipes:
@@ -36,7 +36,7 @@ def apply_suggestions(db: Session = Depends(get_db), _user: User = Depends(get_c
     today = date.today()
     week_start = today - timedelta(days=today.weekday())
 
-    plan = MealPlan(week_start=week_start, title="Suggested by Blood Test Analysis")
+    plan = MealPlan(user_id=user.id, week_start=week_start, title="Suggested by Blood Test Analysis")
     db.add(plan)
     db.flush()
 
@@ -59,12 +59,12 @@ def apply_suggestions(db: Session = Depends(get_db), _user: User = Depends(get_c
 
 
 @router.post("/generate")
-async def generate_ai_meal_plan(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Use AI to analyze blood tests and generate a full week's meal plan with new recipes."""
     from datetime import date, timedelta
     from app.models import Recipe, RecipeIngredient, RecipeNutrition, MealPlan, MealPlanEntry
 
-    result = await generate_meal_plan_from_bloodwork(db)
+    result = await generate_meal_plan_from_bloodwork(db, user.id)
 
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
@@ -78,6 +78,7 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), _user: User = Dep
 
     for meal in result:
         recipe = Recipe(
+            user_id=user.id,
             name=meal.get("name", "Unnamed"),
             description=meal.get("description", ""),
             prep_time_min=meal.get("prep_time_min", 10),
@@ -90,7 +91,6 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), _user: User = Dep
         db.add(recipe)
         db.flush()
 
-        # Create ingredients
         ingredients = meal.get("ingredients", [])
         for ing in ingredients:
             db.add(RecipeIngredient(
@@ -100,7 +100,6 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), _user: User = Dep
                 unit=ing.get("unit", ""),
             ))
 
-        # Create nutrition
         nutrition = meal.get("nutrition", {})
         if nutrition:
             db.add(RecipeNutrition(
@@ -119,10 +118,9 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), _user: User = Dep
             "meal_slot": meal.get("slot", "lunch").lower(),
         })
 
-    # Create meal plan
     today = date.today()
     week_start = today - timedelta(days=today.weekday())
-    plan = MealPlan(week_start=week_start, title="AI-Generated from Blood Tests")
+    plan = MealPlan(user_id=user.id, week_start=week_start, title="AI-Generated from Blood Tests")
     db.add(plan)
     db.flush()
 

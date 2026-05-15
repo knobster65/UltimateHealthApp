@@ -16,11 +16,20 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(256))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    # Relationships for easy access to user's data
+    blood_tests: Mapped[list["BloodTest"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    medications: Mapped[list["MedicationEntry"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    recipes: Mapped[list["Recipe"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    meal_plans: Mapped[list["MealPlan"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    glucose_readings: Mapped[list["GlucoseReading"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    exercise_entries: Mapped[list["ExerciseEntry"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
 
 class BloodTest(Base):
     __tablename__ = "blood_tests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     date_tested: Mapped[date] = mapped_column(Date, index=True)
     lab_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     pdf_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -28,6 +37,7 @@ class BloodTest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     markers: Mapped[list["BloodMarker"]] = relationship(back_populates="test", cascade="all, delete-orphan")
+    user: Mapped["User"] = relationship(back_populates="blood_tests")
 
 
 class BloodMarker(Base):
@@ -50,6 +60,7 @@ class Recipe(Base):
     __tablename__ = "recipes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(200), index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     prep_time_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -63,6 +74,7 @@ class Recipe(Base):
 
     ingredients: Mapped[list["RecipeIngredient"]] = relationship(back_populates="recipe", cascade="all, delete-orphan")
     nutrition: Mapped["RecipeNutrition | None"] = relationship(back_populates="recipe", uselist=False, cascade="all, delete-orphan")
+    user: Mapped["User"] = relationship(back_populates="recipes")
 
 
 class RecipeIngredient(Base):
@@ -97,11 +109,13 @@ class MealPlan(Base):
     __tablename__ = "meal_plans"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     week_start: Mapped[date] = mapped_column(Date, index=True)
     title: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     entries: Mapped[list["MealPlanEntry"]] = relationship(back_populates="plan", cascade="all, delete-orphan")
+    user: Mapped["User"] = relationship(back_populates="meal_plans")
 
 
 class MealPlanEntry(Base):
@@ -122,6 +136,7 @@ class GlucoseReading(Base):
     __tablename__ = "glucose_readings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     date_time: Mapped[datetime] = mapped_column(DateTime, index=True)
     value_mgdl: Mapped[float] = mapped_column(Float)
     trend: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -129,11 +144,14 @@ class GlucoseReading(Base):
     source_entry_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     sync_source: Mapped[str] = mapped_column(String(50), default="nightscout")
 
+    user: Mapped["User"] = relationship(back_populates="glucose_readings")
+
 
 class GlucoseSyncLog(Base):
     __tablename__ = "glucose_sync_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     synced_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     start_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     end_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -145,6 +163,7 @@ class ExerciseEntry(Base):
     __tablename__ = "exercise_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     workout_type: Mapped[str] = mapped_column(String(100), index=True)
     start_time: Mapped[datetime] = mapped_column(DateTime, index=True)
     end_time: Mapped[datetime] = mapped_column(DateTime)
@@ -156,25 +175,31 @@ class ExerciseEntry(Base):
     import_source: Mapped[str] = mapped_column(String(100), default="apple_health")
     import_batch_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
+    user: Mapped["User"] = relationship(back_populates="exercise_entries")
+
 
 class MedicationEntry(Base):
     __tablename__ = "medication_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     medication_name: Mapped[str] = mapped_column(String(100))
     dosage: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     frequency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     start_date: Mapped[date] = mapped_column(Date)
-    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)  # NULL means currently taking
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="medications")
 
 
 class MedicationInteraction(Base):
     __tablename__ = "medication_interactions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     medication_name: Mapped[str] = mapped_column(String(100))
     blood_marker: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    interaction_type: Mapped[str] = mapped_column(String(20))  # "warning" or "info"
+    interaction_type: Mapped[str] = mapped_column(String(20))
     description: Mapped[str] = mapped_column(Text)
     date_found: Mapped[date] = mapped_column(Date, default=date.today)

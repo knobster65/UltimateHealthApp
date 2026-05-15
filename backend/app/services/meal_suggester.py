@@ -46,12 +46,12 @@ MARKER_RULES: dict[str, dict[str, tuple[str, list[tuple[str, float]]]]] = {
 GLYCEMIC_SCORE = {"low": 1.0, "medium": 0.2, "high": -0.8}
 
 
-def analyze_and_suggest(db) -> dict:
+def analyze_and_suggest(db, user_id: int) -> dict:
     """Analyze latest blood test markers and return flagged issues with recipe suggestions."""
     from sqlalchemy import select
 
     latest = db.execute(
-        select(BloodTest).order_by(BloodTest.date_tested.desc()).limit(1)
+        select(BloodTest).where(BloodTest.user_id == user_id).order_by(BloodTest.date_tested.desc()).limit(1)
     ).scalar_one_or_none()
 
     if not latest or not latest.markers:
@@ -89,7 +89,9 @@ def analyze_and_suggest(db) -> dict:
     if not flagged:
         return {"flagged": [], "suggestions": [], "message": "All markers are within normal range. Great job!"}
 
-    recipes = db.execute(select(Recipe).join(RecipeNutrition)).scalars().all()
+    recipes = db.execute(
+        select(Recipe).where(Recipe.user_id == user_id).join(RecipeNutrition)
+    ).scalars().all()
     scored: list[dict] = []
 
     for recipe in recipes:
@@ -136,20 +138,19 @@ def analyze_and_suggest(db) -> dict:
     return {"flagged": flagged, "suggestions": top, "message": None}
 
 
-async def generate_meal_plan_from_bloodwork(db):
+async def generate_meal_plan_from_bloodwork(db, user_id: int):
     """Use AI to analyze blood markers and generate a full week's tailored meal plan with new recipes."""
     from app.services.pdf_parser import call_ai_api
 
-    # Get recent blood test markers (last 6 months)
     six_months_ago = (datetime.now() - timedelta(days=180)).date()
     recent_tests = db.query(BloodTest).filter(
+        BloodTest.user_id == user_id,
         BloodTest.date_tested >= six_months_ago
     ).order_by(BloodTest.date_tested.desc()).all()
 
     if not recent_tests:
         return {"error": "No blood test data available. Upload results first."}
 
-    # Collect all markers from recent tests with flag status
     all_markers = []
     flagged_markers = []
     for test in recent_tests:

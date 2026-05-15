@@ -4,11 +4,11 @@ import { Navigate } from 'react-router-dom'
 import api from '../lib/api'
 
 export default function Login() {
-  const { user, login, setup } = useAuth()
+  const { user, login, signup } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [isSetup, setIsSetup] = useState(false)
+  const [isSignup, setIsSignup] = useState(false)
   const [needSetup, setNeedSetup] = useState(true)
 
   useEffect(() => {
@@ -23,20 +23,14 @@ export default function Login() {
     e.preventDefault()
     setError('')
     try {
-      if (isSetup) {
-        await setup(username, password)
+      if (isSignup) {
+        await signup(username, password)
       } else {
         await login(username, password)
       }
     } catch (err: any) {
       const msg = err?.response?.data?.detail || 'Something went wrong'
-      if (msg.includes('Account already')) {
-        setNeedSetup(false)
-        setIsSetup(false)
-        setError('An account already exists. Please login.')
-      } else {
-        setError(msg)
-      }
+      setError(msg)
     }
   }
 
@@ -44,7 +38,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg-page)]">
       <form onSubmit={handleSubmit} className="bg-[var(--bg-surface)] p-8 rounded-xl shadow w-full max-w-sm space-y-5 border border-[var(--border-default)]">
         <h1 className="text-xl font-bold text-[var(--text-primary)] text-center">
-          {isSetup ? 'Create Account' : 'Login'}
+          {isSignup ? 'Create Account' : 'Login'}
         </h1>
 
         {error && (
@@ -77,15 +71,20 @@ export default function Login() {
           type="submit"
           className="w-full bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 font-medium"
         >
-          {isSetup ? 'Create Account' : 'Login'}
+          {isSignup ? 'Create Account' : 'Login'}
         </button>
 
-        {needSetup && (
-          <p className="text-xs text-center text-[var(--text-muted)]">
-            First time?{' '}
-            <button type="button" onClick={() => setIsSetup(true)} className="text-primary-600 dark:text-primary-400">Create account</button>
-          </p>
-        )}
+        <p className="text-xs text-center text-[var(--text-muted)]">
+          {isSignup ? (
+            <>Already have an account?{' '}
+              <button type="button" onClick={() => setIsSignup(false)} className="text-primary-600 dark:text-primary-400">Login</button>
+            </>
+          ) : (
+            <>New user?{' '}
+              <button type="button" onClick={() => setIsSignup(true)} className="text-primary-600 dark:text-primary-400">Create account</button>
+            </>
+          )}
+        </p>
       </form>
     </div>
   )

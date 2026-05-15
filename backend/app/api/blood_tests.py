@@ -20,14 +20,16 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[BloodTestRead])
-def list_tests(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    tests = db.execute(select(BloodTest).order_by(BloodTest.date_tested.desc())).scalars().all()
+def list_tests(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    tests = db.execute(
+        select(BloodTest).where(BloodTest.user_id == user.id).order_by(BloodTest.date_tested.desc())
+    ).scalars().all()
     return tests
 
 
 @router.post("/", response_model=BloodTestRead)
-def create_test(req: BloodTestCreate, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    test = BloodTest(date_tested=req.date_tested, lab_name=req.lab_name, notes=req.notes)
+def create_test(req: BloodTestCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    test = BloodTest(user_id=user.id, date_tested=req.date_tested, lab_name=req.lab_name, notes=req.notes)
     db.add(test)
     db.flush()
     for m in req.markers:
@@ -44,16 +46,20 @@ def create_test(req: BloodTestCreate, db: Session = Depends(get_db), _user: User
 
 
 @router.get("/{test_id}", response_model=BloodTestRead)
-def get_test(test_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    test = db.execute(select(BloodTest).where(BloodTest.id == test_id)).scalar_one_or_none()
+def get_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    test = db.execute(
+        select(BloodTest).where(BloodTest.id == test_id, BloodTest.user_id == user.id)
+    ).scalar_one_or_none()
     if not test:
         raise HTTPException(status_code=404, detail="Not found")
     return test
 
 
 @router.put("/{test_id}", response_model=BloodTestRead)
-def update_test(test_id: int, req: BloodTestUpdate, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    test = db.execute(select(BloodTest).where(BloodTest.id == test_id)).scalar_one_or_none()
+def update_test(test_id: int, req: BloodTestUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    test = db.execute(
+        select(BloodTest).where(BloodTest.id == test_id, BloodTest.user_id == user.id)
+    ).scalar_one_or_none()
     if not test:
         raise HTTPException(status_code=404, detail="Not found")
     for field, value in req.model_dump(exclude_unset=True).items():
@@ -75,8 +81,10 @@ def update_test(test_id: int, req: BloodTestUpdate, db: Session = Depends(get_db
 
 
 @router.delete("/{test_id}")
-def delete_test(test_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    test = db.execute(select(BloodTest).where(BloodTest.id == test_id)).scalar_one_or_none()
+def delete_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    test = db.execute(
+        select(BloodTest).where(BloodTest.id == test_id, BloodTest.user_id == user.id)
+    ).scalar_one_or_none()
     if not test:
         raise HTTPException(status_code=404, detail="Not found")
     if test.pdf_path:
@@ -89,10 +97,10 @@ def delete_test(test_id: int, db: Session = Depends(get_db), _user: User = Depen
 
 
 @router.post("/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
-    upload_dir = Path(settings.UPLOAD_DIR) / "blood_tests"
+    upload_dir = Path(settings.UPLOAD_DIR) / "blood_tests" / str(user.id)
     upload_dir.mkdir(parents=True, exist_ok=True)
     timestamp = str(int(time.time()))
     filename = f"{timestamp}_{file.filename}"
@@ -103,12 +111,12 @@ async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)
             filepath.unlink()
             raise HTTPException(status_code=400, detail="File too large")
         f.write(content)
-    return {"pdf_path": f"blood_tests/{filename}"}
+    return {"pdf_path": f"blood_tests/{user.id}/{filename}"}
 
 
 @router.post("/parse-pdf")
 async def parse_pdf(file: UploadFile = File(...), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Upload and parse a blood test PDF using AbacusAI, returning structured marker data."""
+    """Upload and parse a blood test PDF using AI, returning structured marker data."""
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
 
@@ -127,10 +135,11 @@ async def parse_pdf(file: UploadFile = File(...), db: Session = Depends(get_db),
 
 
 @router.get("/markers/trends")
-def marker_trends(marker_name: str, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+def marker_trends(marker_name: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     stmt = (
         select(BloodMarker, BloodTest.date_tested)
         .join(BloodTest)
+        .where(BloodTest.user_id == user.id)
         .where(BloodMarker.marker_name.ilike(f"%{marker_name}%"))
         .order_by(BloodTest.date_tested.asc())
     )
@@ -149,8 +158,8 @@ def marker_trends(marker_name: str, db: Session = Depends(get_db), _user: User =
 
 
 @router.get("/pdf/{filename}")
-def serve_pdf(filename: str, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    filepath = Path(settings.UPLOAD_DIR) / "blood_tests" / filename
+def serve_pdf(filename: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    filepath = Path(settings.UPLOAD_DIR) / "blood_tests" / str(user.id) / filename
     if not filepath.exists() or not filepath.is_file():
         raise HTTPException(status_code=404, detail="PDF not found")
     return FileResponse(filepath, media_type="application/pdf", filename=filename)

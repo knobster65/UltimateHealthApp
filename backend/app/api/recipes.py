@@ -16,9 +16,9 @@ def list_recipes(
     glycemic: str | None = None,
     search: str | None = None,
     db: Session = Depends(get_db),
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
-    stmt = select(Recipe)
+    stmt = select(Recipe).where(Recipe.user_id == user.id)
     if category:
         stmt = stmt.where(Recipe.category == category)
     if glycemic:
@@ -29,8 +29,8 @@ def list_recipes(
 
 
 @router.post("/", response_model=RecipeRead)
-def create_recipe(req: RecipeCreate, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    recipe = Recipe(**req.model_dump(exclude={"ingredients", "nutrition"}))
+def create_recipe(req: RecipeCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    recipe = Recipe(user_id=user.id, **req.model_dump(exclude={"ingredients", "nutrition"}))
     db.add(recipe)
     db.flush()
     for ing in req.ingredients:
@@ -43,16 +43,20 @@ def create_recipe(req: RecipeCreate, db: Session = Depends(get_db), _user: User 
 
 
 @router.get("/{recipe_id}", response_model=RecipeRead)
-def get_recipe(recipe_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    recipe = db.execute(select(Recipe).where(Recipe.id == recipe_id)).scalar_one_or_none()
+def get_recipe(recipe_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    recipe = db.execute(
+        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == user.id)
+    ).scalar_one_or_none()
     if not recipe:
         raise HTTPException(status_code=404, detail="Not found")
     return recipe
 
 
 @router.delete("/{recipe_id}")
-def delete_recipe(recipe_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    recipe = db.execute(select(Recipe).where(Recipe.id == recipe_id)).scalar_one_or_none()
+def delete_recipe(recipe_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    recipe = db.execute(
+        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == user.id)
+    ).scalar_one_or_none()
     if not recipe:
         raise HTTPException(status_code=404, detail="Not found")
     db.delete(recipe)

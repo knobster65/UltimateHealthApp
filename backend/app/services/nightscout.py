@@ -7,12 +7,12 @@ from app.models import GlucoseReading, GlucoseSyncLog
 from app.config import settings
 
 
-def sync_nightscout(db: Session) -> dict:
+def sync_nightscout(db: Session, user_id: int) -> dict:
     if not settings.NIGHTSCOUT_URL or not settings.NIGHTSCOUT_API_TOKEN:
         return {"error": "Nightscout not configured", "entries_fetched": 0, "entries_stored": 0}
 
     last_sync = db.execute(
-        select(GlucoseSyncLog).order_by(GlucoseSyncLog.synced_at.desc()).limit(1)
+        select(GlucoseSyncLog).where(GlucoseSyncLog.user_id == user_id).order_by(GlucoseSyncLog.synced_at.desc()).limit(1)
     ).scalar_one_or_none()
 
     start_time = last_sync.end_time if last_sync else None
@@ -38,7 +38,7 @@ def sync_nightscout(db: Session) -> dict:
     for entry in entries:
         ns_id = entry.get("_id")
         existing = db.execute(
-            select(GlucoseReading).where(GlucoseReading.source_entry_id == ns_id)
+            select(GlucoseReading).where(GlucoseReading.user_id == user_id, GlucoseReading.source_entry_id == ns_id)
         ).scalar_one_or_none()
         if existing:
             continue
@@ -49,6 +49,7 @@ def sync_nightscout(db: Session) -> dict:
         dt = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
 
         reading = GlucoseReading(
+            user_id=user_id,
             date_time=dt,
             value_mgdl=float(entry.get("sgv", 0)),
             trend=entry.get("direction"),
@@ -67,6 +68,7 @@ def sync_nightscout(db: Session) -> dict:
         end_time = datetime.fromtimestamp(last_entry_ts / 1000, tz=timezone.utc)
 
     log = GlucoseSyncLog(
+        user_id=user_id,
         start_time=start_time,
         end_time=end_time,
         entries_fetched=len(entries),

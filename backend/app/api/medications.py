@@ -16,9 +16,10 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[MedicationRead])
-def list_medications(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """List all medications (active ones first, then historical)."""
-    meds = db.query(MedicationEntry).order_by(
+def list_medications(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    meds = db.query(MedicationEntry).filter(
+        MedicationEntry.user_id == user.id,
+    ).order_by(
         MedicationEntry.end_date.is_(None).desc(),
         MedicationEntry.start_date.desc()
     ).all()
@@ -26,9 +27,9 @@ def list_medications(db: Session = Depends(get_db), _user: User = Depends(get_cu
 
 
 @router.post("/", response_model=MedicationRead)
-def add_medication(req: MedicationCreate, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Add a new medication entry."""
+def add_medication(req: MedicationCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     med = MedicationEntry(
+        user_id=user.id,
         medication_name=req.medication_name,
         dosage=req.dosage,
         frequency=req.frequency,
@@ -43,9 +44,11 @@ def add_medication(req: MedicationCreate, db: Session = Depends(get_db), _user: 
 
 
 @router.put("/{med_id}", response_model=MedicationRead)
-def update_medication(med_id: int, req: MedicationUpdate, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Update a medication entry."""
-    med = db.query(MedicationEntry).filter(MedicationEntry.id == med_id).first()
+def update_medication(med_id: int, req: MedicationUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    med = db.query(MedicationEntry).filter(
+        MedicationEntry.id == med_id,
+        MedicationEntry.user_id == user.id,
+    ).first()
     if not med:
         raise HTTPException(status_code=404, detail="Medication not found")
 
@@ -58,41 +61,41 @@ def update_medication(med_id: int, req: MedicationUpdate, db: Session = Depends(
 
 
 @router.delete("/{med_id}")
-def delete_medication(med_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Delete a medication entry."""
-    med = db.query(MedicationEntry).filter(MedicationEntry.id == med_id).first()
+def delete_medication(med_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    med = db.query(MedicationEntry).filter(
+        MedicationEntry.id == med_id,
+        MedicationEntry.user_id == user.id,
+    ).first()
     if not med:
         raise HTTPException(status_code=404, detail="Medication not found")
     db.delete(med)
-    # Also remove any associated interactions
     db.query(MedicationInteraction).filter(
-        MedicationInteraction.medication_name == med.medication_name
+        MedicationInteraction.user_id == user.id,
+        MedicationInteraction.medication_name == med.medication_name,
     ).delete()
     db.commit()
     return {"ok": True}
 
 
 @router.get("/check-interactions")
-async def check_interactions(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Use AI to analyze medications against recent blood test results and flag potential interactions."""
+async def check_interactions(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     from app.models import BloodTest, BloodMarker
 
-    # Get currently active medications
     today = date.today()
     active_meds = db.query(MedicationEntry).filter(
+        MedicationEntry.user_id == user.id,
         (MedicationEntry.end_date.is_(None)) | (MedicationEntry.end_date >= today)
     ).all()
 
     if not active_meds:
         return {"interactions": []}
 
-    # Get recent blood test markers (last 6 months)
-    six_months_ago = (datetime.today() - timedelta(days=180)).date()
+    six_months_ago = (datetime.now() - timedelta(days=180)).date()
     recent_tests = db.query(BloodTest).filter(
+        BloodTest.user_id == user.id,
         BloodTest.date_tested >= six_months_ago
     ).order_by(BloodTest.date_tested.desc()).all()
 
-    # Collect markers from recent tests
     all_markers = []
     for test in recent_tests:
         for marker in test.markers:
@@ -106,7 +109,6 @@ async def check_interactions(db: Session = Depends(get_db), _user: User = Depend
                 "date_tested": test.date_tested.isoformat()
             })
 
-    # Prepare AI analysis request
     med_summary = "\n".join([f"- {m.medication_name} ({m.dosage}, {m.frequency})" for m in active_meds])
     marker_summary = "\n".join([f"{m['marker_name']}: {m['value']} {m['unit']}" for m in all_markers[:30]])
 
@@ -130,21 +132,22 @@ Focus on known pharmacological effects like:
     ]
 
     try:
+        raw_text = await call_ai_api(messages)
+
         import json
         import re
-        raw_text = await call_ai_api(messages)
         try:
             interactions = json.loads(raw_text)
         except json.JSONDecodeError:
-            # Try to find JSON in the response
             match = re.search(r'\[\s*{.*}\s*\]', raw_text, re.DOTALL)
             if match:
                 interactions = json.loads(match.group(0))
             else:
                 return {"error": f"Could not parse AI response", "raw": raw_text[:200]}
 
-        # Save interactions to database for reference
-        existing_interactions = db.query(MedicationInteraction).all()
+        existing_interactions = db.query(MedicationInteraction).filter(
+            MedicationInteraction.user_id == user.id,
+        ).all()
         for interaction in existing_interactions:
             db.delete(interaction)
         db.commit()
@@ -153,10 +156,11 @@ Focus on known pharmacological effects like:
         for interaction in interactions:
             if isinstance(interaction, dict):
                 new_interaction = MedicationInteraction(
+                    user_id=user.id,
                     medication_name=interaction.get("medication_name", "Unknown"),
                     blood_marker=interaction.get("blood_marker"),
                     interaction_type=interaction.get("interaction_type", "info"),
-                    description=interaction.get("description", "")
+                    description=interaction.get("description", ""),
                 )
                 db.add(new_interaction)
                 saved_count += 1
@@ -166,7 +170,7 @@ Focus on known pharmacological effects like:
         return {
             "interactions": interactions,
             "count": len(interactions),
-            "saved_to_db": saved_count
+            "saved_to_db": saved_count,
         }
 
     except Exception as e:
@@ -174,9 +178,8 @@ Focus on known pharmacological effects like:
 
 
 @router.get("/get-interactions", response_model=list[MedicationInteractionRead])
-def get_saved_interactions(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Get previously saved medication interactions from the database."""
-    interactions = db.query(MedicationInteraction).order_by(
-        MedicationInteraction.date_found.desc()
-    ).all()
+def get_saved_interactions(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    interactions = db.query(MedicationInteraction).filter(
+        MedicationInteraction.user_id == user.id,
+    ).order_by(MedicationInteraction.date_found.desc()).all()
     return interactions

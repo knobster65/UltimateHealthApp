@@ -16,9 +16,9 @@ router = APIRouter()
 @router.get("/stats", response_model=DashboardStats)
 def get_dashboard_stats(
     db: Session = Depends(get_db),
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
-    now = datetime.utcnow()
+    now = datetime.now()
     week_ago = now - timedelta(days=7)
     week_start_dt = now - timedelta(days=now.weekday())
 
@@ -29,6 +29,7 @@ def get_dashboard_stats(
     latest_glucose = None
 
     g_stmt = select(GlucoseReading).where(
+        GlucoseReading.user_id == user.id,
         GlucoseReading.date_time >= week_ago,
         GlucoseReading.date_time <= now,
     ).order_by(GlucoseReading.date_time.asc())
@@ -51,14 +52,18 @@ def get_dashboard_stats(
 
     # --- Blood Tests ---
     bt_summary = None
-    bt_count = db.execute(select(func.count(BloodTest.id))).scalar()
+    bt_count = db.execute(
+        select(func.count(BloodTest.id)).where(BloodTest.user_id == user.id)
+    ).scalar()
     if bt_count:
         latest_date = db.execute(
-            select(BloodTest.date_tested).order_by(BloodTest.date_tested.desc()).limit(1)
+            select(BloodTest.date_tested).where(BloodTest.user_id == user.id).order_by(BloodTest.date_tested.desc()).limit(1)
         ).scalar_one_or_none()
 
         flagged = 0
-        all_tests = db.execute(select(BloodTest)).scalars().all()
+        all_tests = db.execute(
+            select(BloodTest).where(BloodTest.user_id == user.id)
+        ).scalars().all()
         for bt in all_tests:
             if getattr(bt, "markers", None):
                 for m in bt.markers:
@@ -73,6 +78,7 @@ def get_dashboard_stats(
 
     # --- Exercise (this week) ---
     ex_stmt = select(ExerciseEntry).where(
+        ExerciseEntry.user_id == user.id,
         ExerciseEntry.start_time >= week_start_dt,
         ExerciseEntry.start_time <= now,
     )
@@ -82,8 +88,12 @@ def get_dashboard_stats(
     ex_calories = sum(e.calories_burned for e in ex_entries)
 
     # --- Meals ---
-    recipe_count = db.execute(select(func.count(Recipe.id))).scalar() or 0
-    meal_plan_count = db.execute(select(func.count(MealPlan.id))).scalar() or 0
+    recipe_count = db.execute(
+        select(func.count(Recipe.id)).where(Recipe.user_id == user.id)
+    ).scalar() or 0
+    meal_plan_count = db.execute(
+        select(func.count(MealPlan.id)).where(MealPlan.user_id == user.id)
+    ).scalar() or 0
 
     return DashboardStats(
         glucose_avg_7d=glucose_avg_7d,
@@ -97,4 +107,3 @@ def get_dashboard_stats(
         recipe_count=recipe_count,
         meal_plan_count=meal_plan_count,
     )
-

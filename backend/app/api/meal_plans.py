@@ -12,13 +12,15 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[MealPlanRead])
-def list_plans(db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    return db.execute(select(MealPlan).order_by(MealPlan.week_start.desc())).scalars().all()
+def list_plans(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return db.execute(
+        select(MealPlan).where(MealPlan.user_id == user.id).order_by(MealPlan.week_start.desc())
+    ).scalars().all()
 
 
 @router.post("/", response_model=MealPlanRead)
-def create_plan(req: MealPlanCreate, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    plan = MealPlan(week_start=req.week_start, title=req.title)
+def create_plan(req: MealPlanCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    plan = MealPlan(user_id=user.id, week_start=req.week_start, title=req.title)
     db.add(plan)
     db.flush()
     for entry in req.entries:
@@ -29,16 +31,20 @@ def create_plan(req: MealPlanCreate, db: Session = Depends(get_db), _user: User 
 
 
 @router.get("/{plan_id}", response_model=MealPlanRead)
-def get_plan(plan_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    plan = db.execute(select(MealPlan).where(MealPlan.id == plan_id)).scalar_one_or_none()
+def get_plan(plan_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    plan = db.execute(
+        select(MealPlan).where(MealPlan.id == plan_id, MealPlan.user_id == user.id)
+    ).scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Not found")
     return plan
 
 
 @router.delete("/{plan_id}")
-def delete_plan(plan_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    plan = db.execute(select(MealPlan).where(MealPlan.id == plan_id)).scalar_one_or_none()
+def delete_plan(plan_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    plan = db.execute(
+        select(MealPlan).where(MealPlan.id == plan_id, MealPlan.user_id == user.id)
+    ).scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Not found")
     db.delete(plan)
@@ -47,8 +53,10 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db), _user: User = Depen
 
 
 @router.get("/{plan_id}/shopping-list", response_model=list[ShoppingListItem])
-def get_shopping_list(plan_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    plan = db.execute(select(MealPlan).where(MealPlan.id == plan_id)).scalar_one_or_none()
+def get_shopping_list(plan_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    plan = db.execute(
+        select(MealPlan).where(MealPlan.id == plan_id, MealPlan.user_id == user.id)
+    ).scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Not found")
 
