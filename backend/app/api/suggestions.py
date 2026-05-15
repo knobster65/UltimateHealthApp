@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _to_str(value) -> str:
+    """Convert value to string, joining lists if needed."""
+    if isinstance(value, list):
+        return "\n".join(str(v) for v in value)
+    return str(value) if value else ""
+
+
 # Fallback: map ingredient name keywords to grocery categories.
 CATEGORY_KEYWORDS: list[tuple[list[str], str]] = [
     (["milk", "yogurt", "cheese", "butter", "cream", "egg", "dairy"], "dairy"),
@@ -114,7 +121,7 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depe
             servings=meal.get("servings", 1) or 1,
             category=meal.get("category", "general"),
             glycemic_rating=meal.get("glycemic_rating", "medium") or "medium",
-            instructions=meal.get("instructions", ""),
+            instructions=_to_str(meal.get("instructions", "")),
         )
         db.add(recipe)
         db.flush()
