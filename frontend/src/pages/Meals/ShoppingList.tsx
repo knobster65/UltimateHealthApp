@@ -1,10 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMealPlans } from '../../hooks/useMealPlans'
 
 export default function ShoppingList() {
-  const { plans, shoppingListQuery } = useMealPlans()
+  const { plans, shoppingListQuery, latestPlanQuery } = useMealPlans()
   const [selectedPlanId, setSelectedPlanId] = useState<number | ''>('')
-  const { data: items } = shoppingListQuery(Number(selectedPlanId))
+
+  // Auto-select latest plan when it loads.
+  useEffect(() => {
+    if (!selectedPlanId && latestPlanQuery.data?.plan) {
+      setSelectedPlanId(latestPlanQuery.data.plan.id)
+    }
+  }, [latestPlanQuery.data])
+
+  const { data: items, refetch } = shoppingListQuery(Number(selectedPlanId))
 
   const grouped = items ? (() => {
     const map = new Map<string, typeof items>()
@@ -32,6 +40,11 @@ export default function ShoppingList() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-[var(--text-primary)]">Shopping List</h1>
+
+      <button onClick={() => { latestPlanQuery.refetch(); refetch() }}
+        className="text-xs text-primary-600 hover:text-primary-700 mb-2">
+        Refresh
+      </button>
 
       <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border p-6 space-y-4">
         <div>

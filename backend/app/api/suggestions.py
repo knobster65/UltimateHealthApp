@@ -1,12 +1,36 @@
+from collections import defaultdict
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User
+from app.models import User, Recipe, RecipeIngredient, RecipeNutrition, MealPlan, MealPlanEntry
 from app.auth import get_current_user
 from app.services.meal_suggester import analyze_and_suggest, generate_meal_plan_from_bloodwork
 
 router = APIRouter()
+
+
+# Fallback: map ingredient name keywords to grocery categories.
+CATEGORY_KEYWORDS: list[tuple[list[str], str]] = [
+    (["milk", "yogurt", "cheese", "butter", "cream", "egg", "dairy"], "dairy"),
+    (["chicken", "beef", "pork", "salmon", "fish", "tuna", "shrimp", "turkey", "steak", "meat", "protein"], "proteins"),
+    (["rice", "pasta", "bread", "oat", "quinoa", "couscous", "noodle", "grain", "tortilla"], "grains"),
+    (["frozen", "ice cream", "frost"], "frozen"),
+    (["oil", "vinegar", "sauce", "salt", "pepper", "spice", "herb", "ginger", "garlic", "cumin", "paprika", "turmeric", "cinnamon", "vanilla"], "spices-herbs"),
+    (["juice", "water", "tea", "coffee", "soda", "beverage", "drink"], "beverages"),
+    (["apple", "banana", "berry", "orange", "lemon", "avocado", "tomato", "lettuce", "spinach", "kale", "broccoli", "carrot", "onion", "garlic", "mushroom", "pepper", "cucumber", "zucchini", "potato", "sweet potato", "corn", "bean", "green", "salad", "fruit", "vegetable", "produce", "nut", "seed", "walnut", "almond"], "produce"),
+]
+
+
+def _guess_category(name: str) -> str:
+    """Guess grocery category from ingredient name using keyword matching."""
+    lower = name.lower()
+    for keywords, category in CATEGORY_KEYWORDS:
+        if any(kw in lower for kw in keywords):
+            return category
+    return "pantry"
 
 
 @router.get("/")
@@ -17,10 +41,6 @@ def get_suggestions(db: Session = Depends(get_db), user: User = Depends(get_curr
 @router.post("/apply")
 def apply_suggestions(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Create a meal plan from top suggested recipes."""
-    from datetime import date, timedelta
-    from sqlalchemy import select
-    from app.models import Recipe, MealPlan, MealPlanEntry
-
     result = analyze_and_suggest(db, user.id)
     if result.get("message") or not result["suggestions"]:
         return result
@@ -61,9 +81,6 @@ def apply_suggestions(db: Session = Depends(get_db), user: User = Depends(get_cu
 @router.post("/generate")
 async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Use AI to analyze blood tests and generate a full week's meal plan with new recipes."""
-    from datetime import date, timedelta
-    from app.models import Recipe, RecipeIngredient, RecipeNutrition, MealPlan, MealPlanEntry
-
     result = await generate_meal_plan_from_bloodwork(db, user.id)
 
     if isinstance(result, dict) and "error" in result:
@@ -93,11 +110,13 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depe
 
         ingredients = meal.get("ingredients", [])
         for ing in ingredients:
+            ing_name = ing.get("name", "")
             db.add(RecipeIngredient(
                 recipe_id=recipe.id,
-                name=ing.get("name", ""),
+                name=ing_name,
                 quantity=ing.get("quantity", 1.0) or 1.0,
                 unit=ing.get("unit", ""),
+                category=ing.get("category") or _guess_category(ing_name),
             ))
 
         nutrition = meal.get("nutrition", {})

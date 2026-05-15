@@ -11,9 +11,9 @@ import BloodTestsUpload from './pages/BloodTests/Upload'
 import BloodTestDetail from './pages/BloodTests/Detail'
 import BloodTestsTrends from './pages/BloodTests/Trends'
 import Recipes from './pages/Meals/Recipes'
+import AIMealPlanner from './pages/Meals/AIMealPlanner'
 import MealPlan from './pages/Meals/MealPlan'
 import ShoppingList from './pages/Meals/ShoppingList'
-import MealSuggestions from './pages/Meals/Suggestions'
 import GlucoseIndex from './pages/Glucose/Index'
 import ExerciseIndex from './pages/Exercise/Index'
 import MedicationsIndex from './pages/Medications/Index'
@@ -44,9 +44,10 @@ function App() {
           <Route path="/blood-tests/upload" element={<ProtectedRoute><BloodTestsUpload /></ProtectedRoute>} />
           <Route path="/blood-tests/:id" element={<ProtectedRoute><BloodTestDetail /></ProtectedRoute>} />
           <Route path="/blood-tests/trends" element={<ProtectedRoute><BloodTestsTrends /></ProtectedRoute>} />
+          <Route path="/meals/planner" element={<ProtectedRoute><AIMealPlanner /></ProtectedRoute>} />
           <Route path="/meals/recipes" element={<ProtectedRoute><Recipes /></ProtectedRoute>} />
           <Route path="/meals/plans" element={<ProtectedRoute><MealPlan /></ProtectedRoute>} />
-          <Route path="/meals/suggestions" element={<ProtectedRoute><MealSuggestions /></ProtectedRoute>} />
+          <Route path="/meals/suggestions" element={<Navigate to="/meals/planner" replace />} />
           <Route path="/meals/shopping" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
           <Route path="/glucose" element={<ProtectedRoute><GlucoseIndex /></ProtectedRoute>} />
           <Route path="/exercise" element={<ProtectedRoute><ExerciseIndex /></ProtectedRoute>} />

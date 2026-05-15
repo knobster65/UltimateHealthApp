@@ -5,6 +5,7 @@ from app.config import settings
 engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
 
 LocalSession = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+SessionLocal = LocalSession  # alias for convenience
 
 
 class Base(DeclarativeBase):

@@ -157,6 +157,32 @@ export interface ShoppingListItem {
   unit: string
 }
 
+export interface MealPlanDetailEntry {
+  id: number
+  day_of_week: number
+  meal_slot: string
+  serving_count: number
+  recipe_name: string
+  recipe_description?: string | null
+  recipe_category?: string | null
+  recipe_glycemic_rating?: string | null
+  ingredients: Array<{ name: string; quantity: number; unit: string; category?: string | null }>
+  nutrition?: { calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number; sugar_g: number } | null
+}
+
+export interface MealPlanDetail {
+  plan_id: number
+  title: string
+  week_start: string
+  entries: MealPlanDetailEntry[]
+  daily_calories: Record<string, number>
+}
+
+export interface LatestPlanResponse {
+  plan: { id: number; title: string; week_start: string } | null
+  shopping_list: ShoppingListItem[]
+}
+
 export interface DashboardStats {
   glucose_avg_7d?: number | null
   glucose_tir_pct?: number | null

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
-import type { MealPlan, ShoppingListItem } from '../types'
+import type { MealPlan, ShoppingListItem, MealPlanDetail, LatestPlanResponse } from '../types'
 
 export function useMealPlans() {
   const queryClient = useQueryClient()
@@ -36,6 +36,7 @@ export function useMealPlans() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meal-plans'] })
       queryClient.invalidateQueries({ queryKey: ['recipes'] })
+      queryClient.invalidateQueries({ queryKey: ['meal-plan-latest'] })
     },
   })
 
@@ -49,5 +50,26 @@ export function useMealPlans() {
       enabled: !!planId,
     })
 
-  return { plans, isLoading, createMutation, deleteMutation, generateAIMealPlanMutation, shoppingListQuery }
+  const planDetailQuery = (planId: number) =>
+    useQuery<MealPlanDetail>({
+      queryKey: ['meal-plan-detail', planId],
+      queryFn: async () => {
+        const { data } = await api.get(`/meal-plans/${planId}/view`)
+        return data
+      },
+      enabled: !!planId,
+    })
+
+  const latestPlanQuery = useQuery<LatestPlanResponse>({
+    queryKey: ['meal-plan-latest'],
+    queryFn: async () => {
+      const { data } = await api.get('/meal-plans/latest')
+      return data
+    },
+  })
+
+  return {
+    plans, isLoading, createMutation, deleteMutation,
+    generateAIMealPlanMutation, shoppingListQuery, planDetailQuery, latestPlanQuery,
+  }
 }

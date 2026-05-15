@@ -46,6 +46,45 @@ MARKER_RULES: dict[str, dict[str, tuple[str, list[tuple[str, float]]]]] = {
 GLYCEMIC_SCORE = {"low": 1.0, "medium": 0.2, "high": -0.8}
 
 
+def _compute_daily_targets(markers: list[dict]) -> str:
+    """Build a targets instruction block from flagged marker values."""
+    lines: list[str] = []
+    for m in markers:
+        if not m.get("flagged"):
+            continue
+        name = m["name"].lower()
+        val = m["value"]
+        high_ref = m.get("high_ref") or 100
+        low_ref = m.get("low_ref") or 0
+
+        if "glucose" in name and val > high_ref:
+            lines.append("- Fasting glucose is high: keep each meal under 45g carbs, daily sugar under 25g, prioritize fiber.")
+        elif "a1c" in name and val > high_ref:
+            lines.append("- A1C elevated: all meals must be low-glycemic. Max 30g sugar/day, emphasize whole grains and legumes.")
+        if "triglycerides" in name and val > high_ref:
+            lines.append("- Triglycerides high: total daily calories under 1800, minimize carbs and alcohol sources, add omega-3.")
+        if "cholesterol" in name and val > high_ref:
+            lines.append("- Total cholesterol high: saturated fat under 15g/day, add soluble fiber (oats, beans) to every main meal.")
+        if "ldl" in name and val > high_ref:
+            lines.append("- LDL high: include oatmeal, beans, almonds. Avoid fried foods and full-fat dairy.")
+        if "vitamin d" in name and val < low_ref:
+            lines.append("- Vitamin D low: include fatty fish 2-3x/week, eggs, fortified milk, mushrooms.")
+        if "hemoglobin" in name and val < low_ref:
+            lines.append("- Hemoglobin low: add iron-rich foods (spinach, red meat, lentils) paired with vitamin C sources.")
+        if "ferritin" in name and val < low_ref:
+            lines.append("- Ferritin low: prioritize iron + vitamin C combinations. Avoid tea/coffee with meals.")
+        if "b12" in name and val < low_ref:
+            lines.append("- B12 low: include eggs, dairy, fortified cereals, lean meats daily.")
+        if "hs crp" in name and val > high_ref:
+            lines.append("- Inflammation elevated: add turmeric, ginger, omega-3 rich fish. Avoid processed foods.")
+        if "uric acid" in name and val > high_ref:
+            lines.append("- Uric acid high: avoid organ meats and shellfish. Limit red meat, add cherries and citrus.")
+
+    if not lines:
+        return "\n\nDaily nutrition targets: All markers normal — follow standard diabetic-friendly guidelines."
+    return "\n\nDaily nutrition targets based on your blood work:\n" + "\n".join(lines)
+
+
 def analyze_and_suggest(db, user_id: int) -> dict:
     """Analyze latest blood test markers and return flagged issues with recipe suggestions."""
     from sqlalchemy import select
@@ -175,52 +214,38 @@ async def generate_meal_plan_from_bloodwork(db, user_id: int):
     flagged_text = "\n".join(flagged_markers) if flagged_markers else "None — all markers normal"
     marker_list = "\n".join([f"  {m['name']}: {m['value']} {m['unit']}" for m in all_markers[:20]])
 
+    # Compute daily nutrition targets from flagged markers.
+    daily_targets = _compute_daily_targets(all_markers)
+
     messages = [
         {
             "role": "system",
             "content": """You are a nutritionist and meal planner for a patient with diabetes and metabolic concerns.
-Generate a full week (Monday-Sunday) meal plan with Breakfast, Lunch, Dinner, and Snack for each day.
+Generate a full week (Monday-Sunday) meal plan with Breakfast, Lunch, Dinner, and Snack for each day — 28 meals total.
 
-For each meal slot, return ONE recipe entry. Return ONLY valid JSON with this exact structure:
-{
-  "meals": [
-    {
-      "day": "Monday",
-      "slot": "Breakfast",
-      "name": "Recipe name",
-      "description": "Brief one-line description",
-      "prep_time_min": 10,
-      "cook_time_min": 15,
-      "servings": 1,
-      "category": "breakfast",
-      "glycemic_rating": "low",
-      "instructions": "Step by step cooking instructions in one paragraph.",
-      "ingredients": [
-        {"name": "Ingredient", "quantity": 1.0, "unit": "cup"},
-      ],
-      "nutrition": {
-        "calories": 350,
-        "protein_g": 20,
-        "carbs_g": 40,
-        "fat_g": 12,
-        "fiber_g": 8,
-        "sugar_g": 6
-      }
-    }
-  ]
-}
+Return ONLY valid JSON: {"meals": [...]}. Each meal object has these fields:
+- day: Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday
+- slot: Breakfast|Lunch|Dinner|Snack
+- name: Recipe title
+- description: One-line description
+- prep_time_min, cook_time_min: integers
+- servings: integer (default 1)
+- category: breakfast|lunch|dinner|snack|salad|soup|dessert
+- glycemic_rating: low|medium|high
+- instructions: Step-by-step cooking steps.
+- ingredients: [{"name": str, "quantity": float, "unit": str, "category": str}, ...]
+  Valid categories: produce, proteins, dairy, grains, pantry, frozen, spices-herbs, beverages
+- nutrition: {"calories": float, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float, "sugar_g": float}
 
 Dietary rules:
-- Focus on low-glycemic, high-fiber foods
-- Lean proteins, omega-3 rich sources (salmon, walnuts, flaxseed)
-- Plenty of vegetables, especially leafy greens
-- Minimal added sugar and refined carbs
-- Healthy fats (olive oil, avocado, nuts)
-- Portion-controlled meals around 400-600 calories per main meal, 150-250 for snacks
-- Each recipe should be different — no repeats across the week
-- Make it practical with ingredients from a regular grocery store
-- day values must be: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-- slot values must be: Breakfast, Lunch, Dinner, Snack"""
+- Focus on low-glycemic, high-fiber foods. Lean proteins, omega-3 (salmon, walnuts, flaxseed).
+- Plenty of vegetables, especially leafy greens. Minimal added sugar and refined carbs.
+- Healthy fats (olive oil, avocado, nuts). Each recipe must be unique — no repeats.
+- Main meals: 400-600 cal. Snacks: 150-250 cal.
+- Make recipes practical with grocery store ingredients.
+""" + daily_targets +
+"""
+Return the full JSON object with all 28 meals. No markdown, no explanation text."""
         },
         {
             "role": "user",

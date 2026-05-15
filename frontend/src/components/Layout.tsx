@@ -13,10 +13,10 @@ const sectionNavs = [
     { label: 'Trends', path: '/blood-tests/trends' },
   ]},
   { title: 'Meals', children: [
+    { label: 'AI Meal Planner', path: '/meals/planner' },
     { label: 'Recipes', path: '/meals/recipes' },
-    { label: 'Meal Plans', path: '/meals/plans' },
+    { label: 'Saved Plans', path: '/meals/plans' },
     { label: 'Shopping List', path: '/meals/shopping' },
-    { label: 'Suggestions', path: '/meals/suggestions' },
   ]},
   { title: 'Glucose', children: [
     { label: 'Overview', path: '/glucose' },
