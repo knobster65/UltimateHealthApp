@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,6 +9,8 @@ from app.database import get_db
 from app.models import User, Recipe, RecipeIngredient, RecipeNutrition, MealPlan, MealPlanEntry
 from app.auth import get_current_user
 from app.services.meal_suggester import analyze_and_suggest, generate_meal_plan_from_bloodwork
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -86,7 +89,10 @@ async def generate_ai_meal_plan(db: Session = Depends(get_db), user: User = Depe
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        detail = str(e) if str(e) else repr(e)
+        raise HTTPException(status_code=502, detail=f"AI service error: {detail}")
 
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
