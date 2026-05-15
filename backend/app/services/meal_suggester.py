@@ -270,6 +270,6 @@ Return the full JSON object with all 28 meals. No markdown, no explanation text.
         if isinstance(repaired, dict):
             result = repaired
         else:
-            return {"error": f"Could not parse AI response as JSON", "raw": raw_text[:300]}
+            return {"error": f"Could not parse AI response as JSON. Response length: {len(raw_text)} chars.", "raw": raw_text[:1000]}
 
     return result.get("meals", [])
