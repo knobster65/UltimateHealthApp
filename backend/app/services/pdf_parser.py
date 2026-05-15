@@ -54,7 +54,7 @@ async def call_ai_api(messages: list, model: str = None) -> str:
         "model": model_name,
         "messages": messages,
         "temperature": 0.1,
-        "max_tokens": 16384,
+        "max_tokens": 32768,
     }
 
     async with httpx.AsyncClient(timeout=120.0) as client:

@@ -220,36 +220,19 @@ async def generate_meal_plan_from_bloodwork(db, user_id: int):
     messages = [
         {
             "role": "system",
-            "content": """You are a nutritionist and meal planner for a patient with diabetes and metabolic concerns.
-Generate a full week (Monday-Sunday) meal plan with Breakfast, Lunch, Dinner, and Snack for each day — 28 meals total.
+            "content": """You are a nutritionist for a diabetic patient. Generate 7 days × 4 meals (Breakfast, Lunch, Dinner, Snack) = 28 meals total.
 
-Return ONLY valid JSON: {"meals": [...]}. Each meal object has these fields:
-- day: Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday
-- slot: Breakfast|Lunch|Dinner|Snack
-- name: Recipe title
-- description: One-line description
-- prep_time_min, cook_time_min: integers
-- servings: integer (default 1)
-- category: breakfast|lunch|dinner|snack|salad|soup|dessert
-- glycemic_rating: low|medium|high
-- instructions: Step-by-step cooking steps.
-- ingredients: [{"name": str, "quantity": float, "unit": str, "category": str}, ...]
-  Valid categories: produce, proteins, dairy, grains, pantry, frozen, spices-herbs, beverages
-- nutrition: {"calories": float, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float, "sugar_g": float}
+Return ONLY valid JSON: {"meals": [...]}. Each meal:
+- day, slot, name, description, prep_time_min, cook_time_min, servings, category, glycemic_rating
+- instructions: Full step-by-step cooking directions (at least 4-5 steps per recipe)
+- ingredients: [{"name", "quantity", "unit", "category"}] — categories: produce, proteins, dairy, grains, pantry, frozen, spices-herbs, beverages
+- nutrition: {"calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g"}
 
-Dietary rules:
-- Focus on low-glycemic, high-fiber foods. Lean proteins, omega-3 (salmon, walnuts, flaxseed).
-- Plenty of vegetables, especially leafy greens. Minimal added sugar and refined carbs.
-- Healthy fats (olive oil, avocado, nuts). Each recipe must be unique — no repeats.
-- Main meals: 400-600 cal. Snacks: 150-250 cal.
-- Make recipes practical with grocery store ingredients.
-""" + daily_targets +
-"""
-Return the full JSON object with all 28 meals. No markdown, no explanation text."""
+Rules: low-glycemic, high-fiber, lean protein. Main meals 400-600 cal, snacks 150-250 cal. No repeats.""" + daily_targets
         },
         {
             "role": "user",
-            "content": f"My recent blood test results:\n\nFlagged/out-of-range markers:\n{flagged_text}\n\nAll markers:\n{marker_list}\n\nPlease generate a complete week meal plan tailored to my health needs."
+            "content": f"Blood tests — flagged:\n{flagged_text}\n\nAll markers:\n{marker_list}\n\nGenerate full meal plan with detailed instructions."
         }
     ]
 
