@@ -61,7 +61,7 @@ export default function AIMealPlanner() {
 
   // Compute shopping list from plan detail entries
   const shoppingList = useMemo(() => {
-    if (!planDetail) return []
+    if (!planDetail || !planDetail.entries) return []
     const map = new Map<string, { items: Set<string>; qty: number; unit: string }>()
     for (const entry of planDetail.entries) {
       for (const ing of entry.ingredients) {
@@ -92,7 +92,7 @@ export default function AIMealPlanner() {
 
   // Weekly nutrition summary
   const weekSummary = useMemo(() => {
-    if (!planDetail) return null
+    if (!planDetail || !planDetail.entries) return null
     const dayMap: Record<number, MealPlanDetailEntry[]> = {}
     for (const entry of planDetail.entries) {
       if (!dayMap[entry.day_of_week]) dayMap[entry.day_of_week] = []

@@ -7,9 +7,11 @@ const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 export default function PrintView() {
   const { planId } = useParams<{ planId: string }>()
   const id = planId ? Number(planId) : null
-  const { data, isLoading } = useMealPlans().planDetailQuery(id!)
 
-  if (isLoading || !data) return <PrintLoading />
+  // Use a safe hook call - always pass a valid number to avoid NaN in query key
+  const { data, isLoading } = useMealPlans().planDetailQuery(id ?? 0)
+
+  if (isLoading || !id || !data || !data.entries) return <PrintLoading />
 
   const shoppingItems = computeShoppingList(data.entries)
 

@@ -8,7 +8,7 @@ export default function ShoppingList() {
 
   // Auto-select latest plan when it loads.
   useEffect(() => {
-    if (!selectedPlanId && latestPlanQuery.data?.plan) {
+    if (!selectedPlanId && latestPlanQuery.data?.plan?.id) {
       setSelectedPlanId(latestPlanQuery.data.plan.id)
     }
   }, [latestPlanQuery.data])
