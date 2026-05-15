@@ -166,6 +166,9 @@ export interface MealPlanDetailEntry {
   recipe_description?: string | null
   recipe_category?: string | null
   recipe_glycemic_rating?: string | null
+  recipe_instructions?: string | null
+  prep_time_min?: number | null
+  cook_time_min?: number | null
   ingredients: Array<{ name: string; quantity: number; unit: string; category?: string | null }>
   nutrition?: { calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number; sugar_g: number } | null
 }

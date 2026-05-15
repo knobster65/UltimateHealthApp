@@ -186,6 +186,12 @@ export default function AIMealPlanner() {
                 View all plans
               </Link>
               <button
+                onClick={() => window.open(`/meals/print/${genPlanId}`, '_blank')}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Print
+              </button>
+              <button
                 onClick={() => { setGenPlanId(null); setCheckedItems(new Set()) }}
                 className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
               >

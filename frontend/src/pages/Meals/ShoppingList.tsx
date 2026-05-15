@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useMealPlans } from '../../hooks/useMealPlans'
 
 export default function ShoppingList() {
@@ -69,7 +70,10 @@ export default function ShoppingList() {
 
         {selectedPlanId && items && items.length > 0 && (
           <>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-4">
+              <Link to={`/meals/print/${selectedPlanId}`}
+                target="_blank"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium">Print</Link>
               <button onClick={exportCSV}
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium">Export CSV</button>
             </div>

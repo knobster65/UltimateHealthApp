@@ -101,6 +101,9 @@ def get_plan_detail(plan_id: int, db: Session = Depends(get_db), user: User = De
             "recipe_description": recipe.description,
             "recipe_category": recipe.category,
             "recipe_glycemic_rating": recipe.glycemic_rating,
+            "recipe_instructions": recipe.instructions,
+            "prep_time_min": recipe.prep_time_min,
+            "cook_time_min": recipe.cook_time_min,
             "ingredients": [
                 {"name": i.name, "quantity": i.quantity, "unit": i.unit, "category": i.category}
                 for i in recipe.ingredients
